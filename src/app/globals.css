@@ -1,83 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  /* Brand Colors */
-  --brand-primary: #6366f1; /* Indigo */
-  --brand-secondary: #a855f7; /* Purple */
-  --brand-accent: #f472b6; /* Pink */
-  
+  /* Campus Warm Theme */
+  --brand-primary: #f59e0b;
+  --brand-secondary: #ea580c;
+  --brand-accent: #dc2626;
+
   /* Backgrounds */
-  --bg-dark: #0f0f1a;
-  --bg-dark-secondary: #1a1a2e;
-  --bg-card: rgba(255, 255, 255, 0.05);
-  --bg-card-hover: rgba(255, 255, 255, 0.1);
-  
+  --bg-cream: #fefbf6;
+  --bg-warm: #fdf6ed;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fef3e2;
+
   /* Text */
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+
   /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-hover: rgba(255, 255, 255, 0.2);
-  
+  --border-subtle: #e5e7eb;
+  --border-hover: #fbbf24;
+
   /* Effects */
-  --blur-glass: 12px;
-  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
+  --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-warm: 0 10px 25px -5px rgba(245, 158, 11, 0.15);
 }
 
 @theme inline {
-  --color-background: var(--bg-dark);
+  --color-background: var(--bg-cream);
   --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--bg-dark);
+  background: var(--bg-cream);
   color: var(--text-primary);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-/* Utility classes for glassmorphism */
-.glass {
-  backdrop-filter: blur(var(--blur-glass));
+.card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-soft);
+  transition: all 0.2s;
 }
 
-.glass:hover {
-  background: var(--bg-card-hover);
+.card:hover {
+  box-shadow: var(--shadow-warm);
   border-color: var(--border-hover);
 }
 
-/* Gradient text utility */
 .gradient-text {
-  background: linear-gradient(to right, var(--brand-primary), var(--brand-secondary), var(--brand-accent));
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Button base styles */
 .btn-primary {
-  background: linear-gradient(to right, var(--brand-primary), var(--brand-secondary));
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
   color: white;
   font-weight: 600;
   border-radius: 0.75rem;
   padding: 0.75rem 1.5rem;
   transition: all 0.2s;
+  box-shadow: var(--shadow-soft);
 }
 
 .btn-primary:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.05);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-warm);
 }
 
 .btn-secondary {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  color: white;
+  color: var(--text-primary);
   font-weight: 500;
   border-radius: 0.75rem;
   padding: 0.75rem 1.5rem;
@@ -87,23 +88,4 @@ body {
 .btn-secondary:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-hover);
-}
-
-/* Animated background blobs */
-@keyframes blob {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-}
-
-.animate-blob {
-  animation: blob 7s infinite;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
 }

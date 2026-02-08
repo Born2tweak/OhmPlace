@@ -1,108 +1,50 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { useUser, useClerk, SignIn } from '@clerk/nextjs'
 import { useState, useEffect } from 'react'
-import type { User } from '@supabase/supabase-js'
 
 export default function Home() {
-    const [user, setUser] = useState<User | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [email, setEmail] = useState('')
-    const [authLoading, setAuthLoading] = useState(false)
-    const [message, setMessage] = useState('')
-    const [error, setError] = useState('')
-    const supabase = createClient()
+    const { user, isLoaded, isSignedIn } = useUser()
+    const { signOut } = useClerk()
+    const [eduError, setEduError] = useState(false)
 
     useEffect(() => {
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            setUser(user)
-            setLoading(false)
+        if (isSignedIn && user?.primaryEmailAddress?.emailAddress) {
+            const email = user.primaryEmailAddress.emailAddress
+            if (!/@.+\.edu$/i.test(email)) {
+                setEduError(true)
+            }
         }
-        getUser()
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null)
-        })
-
-        return () => subscription.unsubscribe()
-    }, [supabase.auth])
-
-    const validateEmail = (email: string): { valid: boolean; error?: string } => {
-        if (!email) return { valid: false, error: 'Email is required.' }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(email)) return { valid: false, error: 'Please enter a valid email.' }
-        if (!/@.+\.edu$/i.test(email)) return { valid: false, error: 'Only .edu emails are allowed.' }
-        return { valid: true }
-    }
-
-    const handleAuth = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setAuthLoading(true)
-        setMessage('')
-        setError('')
-
-        const validation = validateEmail(email.trim().toLowerCase())
-        if (!validation.valid) {
-            setError(validation.error!)
-            setAuthLoading(false)
-            return
-        }
-
-        try {
-            const { error } = await supabase.auth.signInWithOtp({
-                email: email.trim().toLowerCase(),
-                options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-            })
-            if (error) throw error
-            setMessage('Check your email for the login link!')
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Something went wrong.')
-        } finally {
-            setAuthLoading(false)
-        }
-    }
-
-    const handleSignOut = async () => {
-        await supabase.auth.signOut()
-        setUser(null)
-    }
+    }, [isSignedIn, user])
 
     const getCampus = (email: string | undefined): string => {
         if (!email) return ''
         const match = email.match(/@(.+\.edu)$/i)
-        return match ? match[1] : ''
+        return match ? match[1].replace('.edu', '').toUpperCase() : ''
     }
 
     return (
-        <div className="min-h-screen bg-[#0f0f1a] relative overflow-hidden">
-            {/* Animated background */}
-            <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
-                <div className="absolute top-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
-                <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
-            </div>
-
-            {/* Navigation */}
-            <nav className="relative z-10 border-b border-white/10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-[#fefbf6]">
+            {/* Nav */}
+            <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md">
                                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
                             </div>
-                            <span className="text-white font-bold text-xl">OhmPlace</span>
+                            <span className="text-gray-900 font-bold text-xl">OhmPlace</span>
                         </div>
 
-                        {!loading && user && (
+                        {isLoaded && isSignedIn && (
                             <div className="flex items-center gap-4">
-                                <div className="hidden sm:block text-right">
-                                    <p className="text-sm text-white">{user.email}</p>
-                                    <p className="text-xs text-gray-400">{getCampus(user.email)}</p>
+                                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-full border border-amber-200">
+                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                    <span className="text-sm font-medium text-amber-800">{getCampus(user?.primaryEmailAddress?.emailAddress)}</span>
                                 </div>
-                                <button onClick={handleSignOut} className="btn-secondary text-sm">
+                                <button onClick={() => signOut()} className="text-sm text-gray-600 hover:text-gray-900 font-medium">
                                     Sign Out
                                 </button>
                             </div>
@@ -112,127 +54,136 @@ export default function Home() {
             </nav>
 
             {/* Hero */}
-            <main className="relative z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+            <main>
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
-                        {/* Left: Copy */}
+                        {/* Left */}
                         <div>
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-indigo-300 text-sm font-medium mb-6">
-                                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium mb-6">
+                                <span className="text-lg">🎓</span>
                                 For Students, By Students
                             </div>
 
-                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight mb-6">
+                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight mb-6 leading-tight">
                                 Your Campus
                                 <span className="block gradient-text">Marketplace</span>
                             </h1>
 
-                            <p className="text-lg text-gray-300 mb-8 max-w-lg">
-                                Buy, sell, and trade parts with students on your campus.
-                                Skip the shipping wait—meet up and exchange today.
+                            <p className="text-lg text-gray-600 mb-8 max-w-lg leading-relaxed">
+                                Buy, sell, and trade with students on your campus.
+                                Skip the shipping—meet up and exchange today.
                             </p>
 
-                            {/* Value props */}
-                            <div className="grid sm:grid-cols-3 gap-4 mb-8">
-                                <div className="glass rounded-xl p-4">
-                                    <div className="text-2xl font-bold text-white">.edu</div>
-                                    <div className="text-sm text-gray-400">Verified Only</div>
+                            <div className="flex flex-wrap gap-3 mb-8">
+                                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-gray-200 shadow-sm">
+                                    <span className="text-amber-500">✓</span>
+                                    <span className="text-sm font-medium text-gray-700">.edu Verified</span>
                                 </div>
-                                <div className="glass rounded-xl p-4">
-                                    <div className="text-2xl font-bold text-white">Local</div>
-                                    <div className="text-sm text-gray-400">Same Campus</div>
+                                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-gray-200 shadow-sm">
+                                    <span className="text-amber-500">✓</span>
+                                    <span className="text-sm font-medium text-gray-700">Local Pickup</span>
                                 </div>
-                                <div className="glass rounded-xl p-4">
-                                    <div className="text-2xl font-bold text-white">Fast</div>
-                                    <div className="text-sm text-gray-400">No Shipping</div>
+                                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-gray-200 shadow-sm">
+                                    <span className="text-amber-500">✓</span>
+                                    <span className="text-sm font-medium text-gray-700">No Fees</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Right: Auth Card */}
-                        <div className="glass rounded-2xl p-8 shadow-2xl">
-                            {loading ? (
+                        {/* Right: Auth */}
+                        <div className="card p-8">
+                            {!isLoaded ? (
                                 <div className="flex items-center justify-center py-12">
-                                    <svg className="animate-spin h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                                    <svg className="animate-spin h-8 w-8 text-amber-500" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                     </svg>
                                 </div>
-                            ) : user ? (
-                                <div className="text-center py-8">
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
-                                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
+                            ) : isSignedIn ? (
+                                eduError ? (
+                                    <div className="text-center py-8">
+                                        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                                            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </div>
+                                        <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid Email</h2>
+                                        <p className="text-gray-600 mb-6">Only .edu emails allowed.</p>
+                                        <button onClick={() => signOut()} className="btn-primary w-full">Sign Out</button>
                                     </div>
-                                    <h2 className="text-xl font-bold text-white mb-2">You're in!</h2>
-                                    <p className="text-gray-400 mb-6">Logged in as {user.email}</p>
-                                    <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
-                                        Browse Listings (Coming Soon)
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    <h2 className="text-2xl font-bold text-white mb-2">Get Started</h2>
-                                    <p className="text-gray-400 mb-6">Sign in with your university email</p>
-
-                                    <form onSubmit={handleAuth} className="space-y-4">
-                                        <div>
-                                            <input
-                                                type="email"
-                                                value={email}
-                                                onChange={(e) => { setEmail(e.target.value); setError('') }}
-                                                placeholder="you@university.edu"
-                                                disabled={authLoading}
-                                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
-                                            />
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+                                            <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
                                         </div>
-
-                                        <button
-                                            type="submit"
-                                            disabled={authLoading}
-                                            className="btn-primary w-full flex items-center justify-center gap-2"
-                                        >
-                                            {authLoading ? (
-                                                <>
-                                                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                                    </svg>
-                                                    Sending...
-                                                </>
-                                            ) : (
-                                                'Continue with Email'
-                                            )}
+                                        <h2 className="text-xl font-bold text-gray-900 mb-2">Welcome! 👋</h2>
+                                        <p className="text-gray-600 mb-6">{user?.primaryEmailAddress?.emailAddress}</p>
+                                        <button disabled className="btn-primary w-full opacity-60 cursor-not-allowed">
+                                            Browse Listings (Coming Soon)
                                         </button>
-                                    </form>
-
-                                    {error && (
-                                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-300">
-                                            {error}
-                                        </div>
-                                    )}
-
-                                    {message && (
-                                        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-300">
-                                            {message}
-                                        </div>
-                                    )}
-
+                                    </div>
+                                )
+                            ) : (
+                                <div>
+                                    <div className="text-center mb-6">
+                                        <h2 className="text-2xl font-bold text-gray-900 mb-1">Get Started</h2>
+                                        <p className="text-gray-600">Sign in with your university email</p>
+                                    </div>
+                                    <SignIn
+                                        appearance={{
+                                            elements: {
+                                                rootBox: 'w-full',
+                                                card: 'bg-transparent shadow-none p-0',
+                                                headerTitle: 'hidden',
+                                                headerSubtitle: 'hidden',
+                                                socialButtonsBlockButton: 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100',
+                                                formFieldInput: 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-amber-500',
+                                                formButtonPrimary: 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-md',
+                                                footerActionLink: 'text-amber-600 hover:text-amber-700',
+                                            }
+                                        }}
+                                        routing="hash"
+                                    />
                                     <p className="mt-4 text-xs text-gray-500 text-center">
-                                        Only .edu emails are accepted to keep the community trusted.
+                                        Only .edu emails accepted
                                     </p>
-                                </>
+                                </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* How it works */}
+                <div className="bg-white border-t border-gray-200 py-16">
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 className="text-2xl font-bold text-gray-900 text-center mb-12">How it works</h2>
+                        <div className="grid md:grid-cols-3 gap-8">
+                            <div className="text-center">
+                                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4 text-xl">📝</div>
+                                <h3 className="font-semibold text-gray-900 mb-2">List your item</h3>
+                                <p className="text-gray-600 text-sm">Post what you're selling in seconds</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4 text-xl">🤝</div>
+                                <h3 className="font-semibold text-gray-900 mb-2">Connect locally</h3>
+                                <p className="text-gray-600 text-sm">Find buyers/sellers on your campus</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4 text-xl">✨</div>
+                                <h3 className="font-semibold text-gray-900 mb-2">Meet & exchange</h3>
+                                <p className="text-gray-600 text-sm">No shipping, no waiting</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </main>
 
             {/* Footer */}
-            <footer className="relative z-10 border-t border-white/10 py-6">
-                <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
-                    © 2026 OhmPlace. Built for students, by students.
+            <footer className="border-t border-gray-200 py-6 bg-white">
+                <div className="max-w-6xl mx-auto px-4 text-center text-sm text-gray-500">
+                    © 2026 OhmPlace
                 </div>
             </footer>
         </div>
