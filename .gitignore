@@ -50,3 +50,5 @@ docs/OhmPlace.pdf
 # temp files
 build_log.txt
 build_error.log
+# clerk configuration (can include secrets)
+/.clerk/
