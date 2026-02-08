@@ -131,21 +131,35 @@ export default function Home() {
                                         <h2 className="text-2xl font-bold text-gray-900 mb-1">Get Started</h2>
                                         <p className="text-gray-600">Sign in with your university email</p>
                                     </div>
-                                    <SignIn
-                                        appearance={{
-                                            elements: {
-                                                rootBox: 'w-full',
-                                                card: 'bg-transparent shadow-none p-0',
-                                                headerTitle: 'hidden',
-                                                headerSubtitle: 'hidden',
-                                                socialButtonsBlockButton: 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100',
-                                                formFieldInput: 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-amber-500',
-                                                formButtonPrimary: 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-md',
-                                                footerActionLink: 'text-amber-600 hover:text-amber-700',
-                                            }
-                                        }}
-                                        routing="hash"
-                                    />
+                                    <div className="w-full">
+                                        <SignIn
+                                            appearance={{
+                                                elements: {
+                                                    rootBox: 'w-full',
+                                                    card: 'bg-transparent shadow-none p-0 mx-auto',
+                                                    headerTitle: 'hidden',
+                                                    headerSubtitle: 'hidden',
+                                                    socialButtonsBlockButton: 'hidden',
+                                                    socialButtonsBlockButtonText: 'hidden',
+                                                    socialButtonsProviderIcon: 'hidden',
+                                                    dividerRow: 'hidden',
+                                                    alternativeMethodsBlockButton: 'hidden',
+                                                    identityPreview: 'hidden',
+                                                    identityPreviewText: 'hidden',
+                                                    identityPreviewEditButton: 'hidden',
+                                                    formFieldLabel__identifier: 'hidden',
+                                                    formFieldInputShowPasswordButton: 'hidden',
+                                                    badge: 'hidden',
+                                                    formFieldHintText: 'hidden',
+                                                    formFieldInput: 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-amber-500 rounded-lg w-full',
+                                                    formButtonPrimary: 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-md rounded-lg w-full',
+                                                    formFieldAction: 'hidden',
+                                                    footer: 'hidden',
+                                                }
+                                            }}
+                                            routing="hash"
+                                        />
+                                    </div>
                                     <p className="mt-4 text-xs text-gray-500 text-center">
                                         Only .edu emails accepted
                                     </p>

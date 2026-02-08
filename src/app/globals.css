@@ -89,3 +89,74 @@ body {
   background: var(--bg-card-hover);
   border-color: var(--border-hover);
 }
+
+/* Clerk Overrides - completely remove social auth UI and blank spaces */
+.cl-socialButtons,
+.cl-socialButtonsBlock,
+.cl-socialButtonsBlockButton,
+.cl-socialButtonsBlockButtonText,
+.cl-socialButtonsProviderIcon,
+.cl-internal-b3fm6y,
+/* last used badge */
+.cl-badge,
+.cl-tagPillIcon,
+.cl-alternativeMethodsBlockButton,
+.cl-footerAction,
+.cl-dividerRow,
+.cl-dividerLine,
+.cl-dividerText,
+.cl-identityPreview,
+.cl-identityPreviewText,
+.cl-identityPreviewEditButton,
+.cl-formFieldLabel__identifier,
+.cl-formFieldHintText,
+.cl-formFieldAction,
+.cl-formFieldInputShowPasswordButton,
+[data-localization-key*="formFieldHintText"],
+[data-localization-key*="identityPreview"],
+[data-localization-key*="socialButtonsBlockButton"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: absolute !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+/* Remove spacing from parent containers */
+.cl-card,
+.cl-main,
+.cl-form {
+  gap: 0.75rem !important;
+}
+
+/* Ensure form fields are properly spaced */
+.cl-formFieldRow {
+  margin-bottom: 1rem !important;
+}
+
+/* Make Clerk form responsive */
+.cl-rootBox {
+  width: 100% !important;
+}
+
+.cl-card {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .card {
+    padding: 1.5rem !important;
+  }
+
+  h1 {
+    font-size: 2rem !important;
+  }
+}
