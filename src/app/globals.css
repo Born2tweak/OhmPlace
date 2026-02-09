@@ -1,93 +1,95 @@
 @import "tailwindcss";
 
 :root {
-  /* Campus Warm Theme */
-  --brand-primary: #f59e0b;
-  --brand-secondary: #ea580c;
-  --brand-accent: #dc2626;
+  /* Crystal-inspired Theme */
+  --brand-primary: #22c1c3;
+  --brand-secondary: #1a9a9b;
+  --brand-accent: #15868e;
 
   /* Backgrounds */
-  --bg-cream: #fefbf6;
-  --bg-warm: #fdf6ed;
+  --bg-light-blue: #e8f4f5;
+  --bg-lighter: #f4fafb;
   --bg-card: #ffffff;
-  --bg-card-hover: #fef3e2;
+  --bg-card-hover: #f0feff;
 
   /* Text */
-  --text-primary: #1f2937;
-  --text-secondary: #4b5563;
-  --text-muted: #9ca3af;
+  --text-primary: #2c3e50;
+  --text-secondary: #5a6c7d;
+  --text-muted: #95a5a6;
 
   /* Borders */
-  --border-subtle: #e5e7eb;
-  --border-hover: #fbbf24;
+  --border-subtle: #d4e8ea;
+  --border-hover: #22c1c3;
 
   /* Effects */
-  --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-warm: 0 10px 25px -5px rgba(245, 158, 11, 0.15);
+  --shadow-soft: 0 4px 12px rgba(34, 193, 195, 0.08);
+  --shadow-hover: 0 8px 24px rgba(34, 193, 195, 0.15);
+  --shadow-button: 0 2px 8px rgba(34, 193, 195, 0.2);
 }
 
 @theme inline {
-  --color-background: var(--bg-cream);
+  --color-background: var(--bg-light-blue);
   --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--bg-cream);
+  background: var(--bg-light-blue);
   color: var(--text-primary);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
+  border-radius: 1.5rem;
   box-shadow: var(--shadow-soft);
-  transition: all 0.2s;
+  transition: all 0.3s ease;
 }
 
 .card:hover {
-  box-shadow: var(--shadow-warm);
-  border-color: var(--border-hover);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  background: var(--brand-primary);
   color: white;
   font-weight: 600;
   border-radius: 0.75rem;
-  padding: 0.75rem 1.5rem;
-  transition: all 0.2s;
-  box-shadow: var(--shadow-soft);
+  padding: 0.875rem 2rem;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-button);
+  border: none;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.05);
+  background: var(--brand-secondary);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-warm);
+  box-shadow: var(--shadow-hover);
 }
 
 .btn-secondary {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-primary);
-  font-weight: 500;
+  background: transparent;
+  border: 2px solid var(--brand-primary);
+  color: var(--brand-primary);
+  font-weight: 600;
   border-radius: 0.75rem;
-  padding: 0.75rem 1.5rem;
-  transition: all 0.2s;
+  padding: 0.75rem 2rem;
+  transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
   background: var(--bg-card-hover);
-  border-color: var(--border-hover);
+  border-color: var(--brand-secondary);
 }
 
 /* Clerk Overrides - completely remove social auth UI and blank spaces */
@@ -101,7 +103,6 @@ body {
 .cl-badge,
 .cl-tagPillIcon,
 .cl-alternativeMethodsBlockButton,
-.cl-footerAction,
 .cl-dividerRow,
 .cl-dividerLine,
 .cl-dividerText,
@@ -112,9 +113,16 @@ body {
 .cl-formFieldHintText,
 .cl-formFieldAction,
 .cl-formFieldInputShowPasswordButton,
+.cl-footer,
+.cl-footerAction,
+.cl-footerActionLink,
+.cl-footerActionText,
+.cl-footerPages,
+.cl-footerPagesLink,
 [data-localization-key*="formFieldHintText"],
 [data-localization-key*="identityPreview"],
-[data-localization-key*="socialButtonsBlockButton"] {
+[data-localization-key*="socialButtonsBlockButton"],
+[data-localization-key*="footerAction"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -127,6 +135,15 @@ body {
   pointer-events: none !important;
   overflow: hidden !important;
 }
+
+/* Center the inner white form box */
+.cl-cardBox {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
 
 /* Remove spacing from parent containers */
 .cl-card,
