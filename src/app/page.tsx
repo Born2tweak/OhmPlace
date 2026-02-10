@@ -2,6 +2,7 @@
 
 import { useUser, useClerk, SignIn, SignUp } from '@clerk/nextjs'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 export default function Home() {
     const { user, isLoaded, isSignedIn } = useUser()
@@ -121,9 +122,14 @@ export default function Home() {
                                         </div>
                                         <h2 className="text-xl font-bold text-[#2c3e50] mb-2">Welcome! 👋</h2>
                                         <p className="text-[#5a6c7d] mb-6">{user?.primaryEmailAddress?.emailAddress}</p>
-                                        <button disabled className="btn-primary w-full opacity-60 cursor-not-allowed">
-                                            Browse Listings (Coming Soon)
-                                        </button>
+                                        <div className="space-y-3">
+                                            <Link href="/dashboard/my-listings" className="block w-full bg-[#22c1c3] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#1a9a9b] transition-colors text-center">
+                                                View Dashboard
+                                            </Link>
+                                            <Link href="/dashboard/new-listing" className="block w-full border-2 border-[#22c1c3] text-[#22c1c3] py-3 px-6 rounded-lg font-medium hover:bg-[#f4fafb] transition-colors text-center">
+                                                + Sell an Item
+                                            </Link>
+                                        </div>
                                     </div>
                                 )
                             ) : (
