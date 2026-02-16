@@ -80,7 +80,7 @@ export default function MarketplacePage() {
     const filteredListings = listings.filter(listing => {
         const matchesSearch =
             listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            listing.description.toLowerCase().includes(searchTerm.toLowerCase())
+            listing.description?.toLowerCase().includes(searchTerm.toLowerCase())
 
         const matchesCategory = selectedCategory ? listing.category === selectedCategory : true
         const matchesCondition = selectedCondition ? listing.condition === selectedCondition : true

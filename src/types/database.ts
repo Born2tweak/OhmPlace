@@ -73,6 +73,32 @@ export type ListingUpdate = Database['public']['Tables']['listings']['Update']
 export type ListingImage = Database['public']['Tables']['listing_images']['Row']
 export type ListingImageInsert = Database['public']['Tables']['listing_images']['Insert']
 
+// Messaging types
+export interface Conversation {
+    id: string
+    participant_1: string
+    participant_2: string
+    last_message_text: string | null
+    last_message_at: string
+    created_at: string
+}
+
+export interface Message {
+    id: string
+    conversation_id: string
+    sender_id: string
+    text: string
+    status: 'sent' | 'delivered' | 'read'
+    created_at: string
+}
+
+export interface BlockedUser {
+    id: string
+    blocker_id: string
+    blocked_id: string
+    created_at: string
+}
+
 export const CATEGORIES = [
     'Resistors',
     'Capacitors',

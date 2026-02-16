@@ -95,7 +95,7 @@ export default function EditListingPage() {
                 title: formData.title.trim(),
                 description: formData.description.trim() || null,
                 category: formData.category,
-                condition: formData.condition,
+                condition: formData.condition || undefined,
                 price: priceInCents,
                 status: formData.status
             }
