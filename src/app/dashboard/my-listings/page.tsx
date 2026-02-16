@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react'
 import { useUser, useClerk } from '@clerk/nextjs'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { deleteAllListingImages } from '@/lib/supabase/storage'
 import type { Listing, ListingImage } from '@/types/database'
+import ListingCard from '@/components/ListingCard'
 
 interface ListingWithImages extends Listing {
     images: ListingImage[]
 }
 
-type FilterTab = 'all' | 'active' | 'completed'
+type FilterTab = 'all' | 'active' | 'sold'
 
 export default function MyListingsPage() {
     const { user } = useUser()
@@ -80,24 +80,15 @@ export default function MyListingsPage() {
             ))
         } catch (error) {
             console.error('Error updating listing:', error)
-            alert('Failed to mark as completed')
+            alert('Failed to mark as sold')
         } finally {
             setUpdatingId(null)
         }
     }
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString)
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    }
-
-    const formatPrice = (cents: number) => {
-        return `$${(cents / 100).toFixed(2)}`
-    }
-
     const filteredListings = listings.filter(listing => {
         if (activeTab === 'active') return listing.status === 'available'
-        if (activeTab === 'completed') return listing.status === 'sold'
+        if (activeTab === 'sold') return listing.status === 'sold'
         return true
     })
 
@@ -139,7 +130,7 @@ export default function MyListingsPage() {
                     <div>
                         <h1 className="text-3xl font-bold text-[#2c3e50] mb-1">My Listings</h1>
                         <p className="text-[#95a5a6]">
-                            {activeCount} active, {completedCount} completed
+                            {activeCount} active, {completedCount} sold
                         </p>
                     </div>
                     <Link
@@ -155,8 +146,8 @@ export default function MyListingsPage() {
                     <button
                         onClick={() => setActiveTab('all')}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === 'all'
-                                ? 'bg-[#22c1c3] text-white'
-                                : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
+                            ? 'bg-[#22c1c3] text-white'
+                            : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
                             }`}
                     >
                         All ({listings.length})
@@ -164,20 +155,20 @@ export default function MyListingsPage() {
                     <button
                         onClick={() => setActiveTab('active')}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === 'active'
-                                ? 'bg-[#22c1c3] text-white'
-                                : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
+                            ? 'bg-[#22c1c3] text-white'
+                            : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
                             }`}
                     >
                         Active ({activeCount})
                     </button>
                     <button
-                        onClick={() => setActiveTab('completed')}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === 'completed'
-                                ? 'bg-[#22c1c3] text-white'
-                                : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
+                        onClick={() => setActiveTab('sold')}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === 'sold'
+                            ? 'bg-[#22c1c3] text-white'
+                            : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
                             }`}
                     >
-                        Completed ({completedCount})
+                        Sold ({completedCount})
                     </button>
                 </div>
 
@@ -189,71 +180,12 @@ export default function MyListingsPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredListings.map((listing) => (
-                            <div key={listing.id} className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                {/* Image */}
-                                {listing.images.length > 0 && (
-                                    <div className="aspect-video bg-gray-100 relative">
-                                        <img
-                                            src={listing.images[0].image_url}
-                                            alt={listing.title}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Content */}
-                                <div className="p-4">
-                                    {/* Title and Status */}
-                                    <div className="flex justify-between items-start mb-3">
-                                        <h3 className="text-lg font-bold text-[#2c3e50]">{listing.title}</h3>
-                                        {listing.status === 'available' && (
-                                            <span className="bg-[#22c1c3]/10 text-[#22c1c3] px-2 py-1 rounded text-xs font-medium">
-                                                Active
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Tags */}
-                                    <div className="flex gap-2 mb-3 flex-wrap">
-                                        <span className="bg-gray-100 text-[#5a6c7d] px-3 py-1 rounded-full text-xs">
-                                            {listing.category}
-                                        </span>
-                                        <span className="bg-gray-100 text-[#5a6c7d] px-3 py-1 rounded-full text-xs">
-                                            {listing.condition === 'new' ? 'New' : listing.condition === 'used-good' ? 'Like New' : 'Used - Fair'}
-                                        </span>
-                                    </div>
-
-                                    {/* Price */}
-                                    <div className="text-2xl font-bold text-[#22c1c3] mb-3">
-                                        {formatPrice(listing.price)}
-                                    </div>
-
-                                    {/* Description (if exists) */}
-                                    {listing.description && (
-                                        <p className="text-sm text-[#5a6c7d] mb-3 line-clamp-2">
-                                            {listing.description}
-                                        </p>
-                                    )}
-
-                                    {/* Footer */}
-                                    <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                                        <span className="text-sm text-[#95a5a6]">
-                                            {formatDate(listing.created_at)}
-                                        </span>
-                                        {listing.status === 'available' ? (
-                                            <button
-                                                onClick={() => markAsCompleted(listing.id)}
-                                                disabled={updatingId === listing.id}
-                                                className="text-[#22c1c3] text-sm font-medium hover:text-[#1a9a9b] disabled:opacity-50"
-                                            >
-                                                {updatingId === listing.id ? 'Updating...' : 'Mark Completed'}
-                                            </button>
-                                        ) : (
-                                            <span className="text-[#95a5a6] text-sm">Sold</span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                            <ListingCard
+                                key={listing.id}
+                                listing={listing}
+                                actionLabel={listing.status === 'available' ? 'Mark Sold' : undefined}
+                                onAction={listing.status === 'available' ? (l) => markAsCompleted(l.id) : undefined}
+                            />
                         ))}
                     </div>
                 )}

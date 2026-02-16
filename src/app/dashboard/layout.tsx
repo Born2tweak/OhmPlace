@@ -3,7 +3,7 @@
 import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Package, PlusCircle, Settings, LogOut } from 'lucide-react'
+import { Package, PlusCircle, Settings, LogOut, ShoppingBag, LayoutDashboard, Store, Users, MessageSquare } from 'lucide-react'
 import { useClerk } from '@clerk/nextjs'
 
 export default function DashboardLayout({
@@ -17,14 +17,29 @@ export default function DashboardLayout({
 
     const navItems = [
         {
-            href: '/dashboard/my-listings',
-            label: 'My Listings',
-            icon: Package
+            href: '/dashboard',
+            label: 'Dashboard',
+            icon: LayoutDashboard
         },
         {
-            href: '/dashboard/new-listing',
-            label: 'Create Listing',
-            icon: PlusCircle
+            href: '/dashboard/marketplace',
+            label: 'Marketplace',
+            icon: ShoppingBag
+        },
+        {
+            href: '/dashboard/my-listings',
+            label: 'My Shop',
+            icon: Store
+        },
+        {
+            href: '/dashboard/community',
+            label: 'Community',
+            icon: Users
+        },
+        {
+            href: '/dashboard/messages',
+            label: 'Messages',
+            icon: MessageSquare
         },
         {
             href: '/dashboard/settings',
