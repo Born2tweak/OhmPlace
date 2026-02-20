@@ -40,7 +40,6 @@ export default function EditListingPage() {
     const fetchListing = async () => {
         const supabase = createClient()
 
-        // Fetch listing
         const { data: listing, error: listingError } = await supabase
             .from('listings')
             .select('*')
@@ -54,7 +53,6 @@ export default function EditListingPage() {
             return
         }
 
-        // Fetch images
         const { data: images } = await supabase
             .from('listing_images')
             .select('*')
@@ -77,7 +75,6 @@ export default function EditListingPage() {
         e.preventDefault()
         setError('')
 
-        // Validation
         const totalImages = existingImages.length - removedImageIds.length + newImages.length
         if (totalImages === 0) {
             setError('At least one image is required')
@@ -89,7 +86,6 @@ export default function EditListingPage() {
         try {
             const supabase = createClient()
 
-            // Update listing
             const priceInCents = Math.round(parseFloat(formData.price) * 100)
             const updateData: ListingUpdate = {
                 title: formData.title.trim(),
@@ -107,7 +103,6 @@ export default function EditListingPage() {
 
             if (updateError) throw new Error('Failed to update listing')
 
-            // Remove deleted images
             for (const imageId of removedImageIds) {
                 const image = existingImages.find((img) => img.id === imageId)
                 if (image) {
@@ -116,14 +111,12 @@ export default function EditListingPage() {
                 }
             }
 
-            // Upload new images
             const newImageUrls: string[] = []
             for (const file of newImages) {
                 const url = await uploadListingImage(file, listingId)
                 newImageUrls.push(url)
             }
 
-            // Insert new image records
             if (newImageUrls.length > 0) {
                 const maxOrder = Math.max(...existingImages.map((img) => img.order), -1)
                 const imageRecords: ListingImageInsert[] = newImageUrls.map((url, index) => ({
@@ -135,7 +128,6 @@ export default function EditListingPage() {
                 await supabase.from('listing_images').insert(imageRecords)
             }
 
-            // Success!
             router.push('/dashboard/my-listings')
         } catch (err) {
             console.error('Save error:', err)
@@ -146,23 +138,23 @@ export default function EditListingPage() {
 
     if (loading) {
         return (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                <p className="text-[#5a6c7d]">Loading listing...</p>
+            <div className="rounded-lg shadow-md p-8 text-center" style={{ background: 'var(--bg-card)' }}>
+                <p style={{ color: 'var(--text-secondary)' }}>Loading listing...</p>
             </div>
         )
     }
 
     if (error && !formData.title) {
         return (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="rounded-lg shadow-md p-8 text-center" style={{ background: 'var(--bg-card)' }}>
                 <p className="text-red-600">{error}</p>
             </div>
         )
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-md p-8">
-            <h1 className="text-3xl font-bold text-[#2c3e50] mb-6">Edit Listing</h1>
+        <div className="rounded-lg shadow-md p-8" style={{ background: 'var(--bg-card)' }}>
+            <h1 className="text-3xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>Edit Listing</h1>
 
             {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -171,9 +163,8 @@ export default function EditListingPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Same form fields as new listing */}
                 <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-[#2c3e50] mb-2">
+                    <label htmlFor="title" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                         Title <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -182,12 +173,13 @@ export default function EditListingPage() {
                         maxLength={100}
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full px-4 py-2 border border-[#d4e8ea] rounded-lg focus:outline-none focus:border-[#22c1c3] text-[#2c3e50]"
+                        className="w-full px-4 py-2 rounded-lg focus:outline-none"
+                        style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-lighter)', color: 'var(--text-primary)' }}
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-[#2c3e50] mb-2">
+                    <label htmlFor="description" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                         Description
                     </label>
                     <textarea
@@ -196,19 +188,21 @@ export default function EditListingPage() {
                         rows={4}
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="w-full px-4 py-2 border border-[#d4e8ea] rounded-lg focus:outline-none focus:border-[#22c1c3] text-[#2c3e50]"
+                        className="w-full px-4 py-2 rounded-lg focus:outline-none"
+                        style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-lighter)', color: 'var(--text-primary)' }}
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="category" className="block text-sm font-medium text-[#2c3e50] mb-2">
+                    <label htmlFor="category" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                         Category <span className="text-red-500">*</span>
                     </label>
                     <select
                         id="category"
                         value={formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full px-4 py-2 border border-[#d4e8ea] rounded-lg focus:outline-none focus:border-[#22c1c3] text-[#2c3e50]"
+                        className="w-full px-4 py-2 rounded-lg focus:outline-none"
+                        style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-lighter)', color: 'var(--text-primary)' }}
                     >
                         {CATEGORIES.map((cat) => (
                             <option key={cat} value={cat}>
@@ -219,7 +213,7 @@ export default function EditListingPage() {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-[#2c3e50] mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                         Condition <span className="text-red-500">*</span>
                     </label>
                     <div className="space-y-2">
@@ -230,20 +224,21 @@ export default function EditListingPage() {
                                     value={cond.value}
                                     checked={formData.condition === cond.value}
                                     onChange={(e) => setFormData({ ...formData, condition: e.target.value as any })}
-                                    className="mr-3 text-[#22c1c3] focus:ring-[#22c1c3]"
+                                    className="mr-3"
+                                    style={{ accentColor: 'var(--brand-primary)' }}
                                 />
-                                <span className="text-[#2c3e50]">{cond.label}</span>
+                                <span style={{ color: 'var(--text-primary)' }}>{cond.label}</span>
                             </label>
                         ))}
                     </div>
                 </div>
 
                 <div>
-                    <label htmlFor="price" className="block text-sm font-medium text-[#2c3e50] mb-2">
+                    <label htmlFor="price" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                         Price <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                        <span className="absolute left-4 top-2.5 text-[#5a6c7d]">$</span>
+                        <span className="absolute left-4 top-2.5" style={{ color: 'var(--text-secondary)' }}>$</span>
                         <input
                             id="price"
                             type="number"
@@ -251,20 +246,22 @@ export default function EditListingPage() {
                             min="0.01"
                             value={formData.price}
                             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                            className="w-full pl-8 pr-4 py-2 border border-[#d4e8ea] rounded-lg focus:outline-none focus:border-[#22c1c3] text-[#2c3e50]"
+                            className="w-full pl-8 pr-4 py-2 rounded-lg focus:outline-none"
+                            style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-lighter)', color: 'var(--text-primary)' }}
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-[#2c3e50] mb-2">
+                    <label htmlFor="status" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                         Status
                     </label>
                     <select
                         id="status"
                         value={formData.status}
                         onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                        className="w-full px-4 py-2 border border-[#d4e8ea] rounded-lg focus:outline-none focus:border-[#22c1c3] text-[#2c3e50]"
+                        className="w-full px-4 py-2 rounded-lg focus:outline-none"
+                        style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-lighter)', color: 'var(--text-primary)' }}
                     >
                         <option value="available">Available</option>
                         <option value="reserved">Reserved</option>
@@ -273,7 +270,7 @@ export default function EditListingPage() {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-[#2c3e50] mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                         Images <span className="text-red-500">*</span>
                     </label>
                     <ImageUploader
@@ -287,7 +284,8 @@ export default function EditListingPage() {
                     <button
                         type="submit"
                         disabled={saving}
-                        className="flex-1 bg-[#22c1c3] text-white py-3 rounded-lg font-medium hover:bg-[#1a9a9b] disabled:opacity-50 transition-colors"
+                        className="flex-1 text-white py-3 rounded-lg font-medium disabled:opacity-50 transition-colors"
+                        style={{ background: 'var(--brand-primary)' }}
                     >
                         {saving ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -295,7 +293,8 @@ export default function EditListingPage() {
                         type="button"
                         onClick={() => router.back()}
                         disabled={saving}
-                        className="px-6 py-3 border border-[#d4e8ea] rounded-lg font-medium text-[#5a6c7d] hover:bg-[#f4fafb] disabled:opacity-50 transition-colors"
+                        className="px-6 py-3 rounded-lg font-medium disabled:opacity-50 transition-colors"
+                        style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', background: 'var(--bg-lighter)' }}
                     >
                         Cancel
                     </button>

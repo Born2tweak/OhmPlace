@@ -44,7 +44,6 @@ export default function CommentSection({ comments, currentUserId, onAddComment, 
         if (sortBy === 'new') {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         }
-        // Best = highest net score
         return (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes)
     })
 
@@ -72,12 +71,18 @@ export default function CommentSection({ comments, currentUserId, onAddComment, 
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Join the conversation..."
                         maxLength={2000}
-                        className="flex-1 px-4 py-2.5 border border-[#d4e8ea] rounded-full focus:outline-none focus:ring-2 focus:ring-[#22c1c3]/40 focus:border-[#22c1c3] text-sm text-[#2c3e50]"
+                        className="flex-1 px-4 py-2.5 rounded-full focus:outline-none focus:ring-2 text-sm"
+                        style={{
+                            border: '1px solid var(--border-subtle)',
+                            background: 'var(--bg-lighter)',
+                            color: 'var(--text-primary)',
+                        }}
                     />
                     <button
                         type="submit"
                         disabled={!newComment.trim() || loading}
-                        className="px-4 py-2.5 bg-[#22c1c3] text-white rounded-full hover:bg-[#1a9a9b] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-4 py-2.5 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        style={{ background: 'var(--brand-primary)' }}
                     >
                         <Send className="w-4 h-4" />
                     </button>
@@ -86,15 +91,16 @@ export default function CommentSection({ comments, currentUserId, onAddComment, 
 
             {/* Sort + count */}
             <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-[#5a6c7d] font-medium">
+                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                     {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
                 </span>
                 <div className="flex items-center gap-1 text-sm">
-                    <span className="text-[#95a5a6]">Sort by:</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Sort by:</span>
                     <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as 'best' | 'new')}
-                        className="text-[#5a6c7d] font-medium bg-transparent border-none focus:outline-none cursor-pointer"
+                        className="font-medium bg-transparent border-none focus:outline-none cursor-pointer"
+                        style={{ color: 'var(--text-secondary)' }}
                     >
                         <option value="best">Best</option>
                         <option value="new">New</option>
@@ -105,18 +111,20 @@ export default function CommentSection({ comments, currentUserId, onAddComment, 
             {/* Comments list */}
             <div className="space-y-1">
                 {sortedComments.map((comment) => (
-                    <div key={comment.id} className="py-3 border-b border-[#f4fafb] last:border-b-0">
-                        <div className="flex items-center gap-2 text-xs text-[#95a5a6] mb-1.5">
-                            <span className="font-semibold text-[#5a6c7d]">{comment.username}</span>
+                    <div key={comment.id} className="py-3 last:border-b-0"
+                        style={{ borderBottom: '1px solid var(--bg-lighter)' }}>
+                        <div className="flex items-center gap-2 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                            <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{comment.username}</span>
                             {comment.user_id === currentUserId && (
-                                <span className="px-1.5 py-0.5 bg-[#22c1c3]/10 text-[#22c1c3] rounded text-[10px] font-bold">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                    style={{ background: 'color-mix(in srgb, var(--brand-primary) 10%, transparent)', color: 'var(--brand-primary)' }}>
                                     OP
                                 </span>
                             )}
                             <span>·</span>
                             <span>{timeAgo(comment.created_at)}</span>
                         </div>
-                        <p className="text-sm text-[#2c3e50] mb-2 whitespace-pre-wrap">{comment.body}</p>
+                        <p className="text-sm mb-2 whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{comment.body}</p>
                         <VoteButton
                             upvotes={comment.upvotes}
                             downvotes={comment.downvotes}
@@ -128,7 +136,7 @@ export default function CommentSection({ comments, currentUserId, onAddComment, 
                 ))}
 
                 {comments.length === 0 && (
-                    <p className="text-center text-sm text-[#95a5a6] py-8">
+                    <p className="text-center text-sm py-8" style={{ color: 'var(--text-muted)' }}>
                         No comments yet. Be the first to share your thoughts!
                     </p>
                 )}

@@ -52,10 +52,11 @@ export default function PostCard({ post, currentUserId, onVote, onDelete }: Post
 
     return (
         <Link href={`/dashboard/community/${post.id}`}>
-            <div className="bg-white rounded-lg shadow-sm border border-[#d4e8ea] p-4 hover:shadow-md transition-shadow cursor-pointer">
+            <div className="rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
                 {/* Header */}
-                <div className="flex items-center gap-2 text-xs text-[#95a5a6] mb-2">
-                    <span className="font-semibold text-[#5a6c7d]">{post.username}</span>
+                <div className="flex items-center gap-2 text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                    <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{post.username}</span>
                     <span>·</span>
                     <span>{timeAgo(post.created_at)}</span>
                 </div>
@@ -67,12 +68,12 @@ export default function PostCard({ post, currentUserId, onVote, onDelete }: Post
                             <FlairBadge flair={post.flair} />
                         </div>
                     )}
-                    <h3 className="text-lg font-bold text-[#2c3e50] leading-snug">{post.title}</h3>
+                    <h3 className="text-lg font-bold leading-snug" style={{ color: 'var(--text-primary)' }}>{post.title}</h3>
                 </div>
 
                 {/* Body preview */}
                 {post.body && (
-                    <p className="text-sm text-[#5a6c7d] mb-3 line-clamp-3">{post.body}</p>
+                    <p className="text-sm mb-3 line-clamp-3" style={{ color: 'var(--text-secondary)' }}>{post.body}</p>
                 )}
 
                 {/* Action bar */}
@@ -84,14 +85,16 @@ export default function PostCard({ post, currentUserId, onVote, onDelete }: Post
                         onVote={(vote) => onVote(post.id, vote)}
                     />
 
-                    <div className="flex items-center gap-1.5 text-[#95a5a6] text-sm px-2 py-1 rounded-full hover:bg-[#f4fafb] transition-colors">
+                    <div className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full transition-colors"
+                        style={{ color: 'var(--text-muted)' }}>
                         <MessageSquare className="w-4 h-4" />
                         <span>{post.comment_count}</span>
                     </div>
 
                     <button
                         onClick={handleShare}
-                        className="flex items-center gap-1.5 text-[#95a5a6] text-sm px-2 py-1 rounded-full hover:bg-[#f4fafb] transition-colors"
+                        className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full transition-colors"
+                        style={{ color: 'var(--text-muted)' }}
                     >
                         <Share2 className="w-4 h-4" />
                         <span>Share</span>
@@ -104,7 +107,8 @@ export default function PostCard({ post, currentUserId, onVote, onDelete }: Post
                                 e.stopPropagation()
                                 onDelete(post.id)
                             }}
-                            className="flex items-center gap-1.5 text-[#95a5a6] text-sm px-2 py-1 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors ml-auto"
+                            className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors ml-auto"
+                            style={{ color: 'var(--text-muted)' }}
                         >
                             <Trash2 className="w-4 h-4" />
                         </button>

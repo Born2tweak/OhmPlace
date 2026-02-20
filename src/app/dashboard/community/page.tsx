@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
+
+export const dynamic = 'force-dynamic'
 import { Plus, Flame, Clock, TrendingUp, Users, Loader2 } from 'lucide-react'
 import PostCard from '@/components/community/PostCard'
 import CreatePostModal from '@/components/community/CreatePostModal'
@@ -61,7 +63,6 @@ export default function CommunityPage() {
     }
 
     const handleVote = async (postId: string, vote: number) => {
-        // Optimistic update
         setPosts(prev => prev.map(p => {
             if (p.id !== postId) return p
             const oldVote = p.userVote
@@ -102,22 +103,25 @@ export default function CommunityPage() {
     return (
         <div className="space-y-4">
             {/* Community header */}
-            <div className="bg-white rounded-lg shadow-sm border border-[#d4e8ea] p-5">
+            <div className="rounded-lg shadow-sm p-5"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-[#22c1c3] to-[#15868e] rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                            style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}>
                             <Users className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-[#2c3e50]">
+                            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
                                 {campus ? campus.split('.')[0].charAt(0).toUpperCase() + campus.split('.')[0].slice(1) : 'Campus'} Community
                             </h1>
-                            <p className="text-sm text-[#95a5a6]">{campus}</p>
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{campus}</p>
                         </div>
                     </div>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#22c1c3] text-white font-medium rounded-full hover:bg-[#1a9a9b] transition-colors text-sm"
+                        className="flex items-center gap-2 px-4 py-2 text-white font-medium rounded-full transition-colors text-sm"
+                        style={{ background: 'var(--brand-primary)' }}
                     >
                         <Plus className="w-4 h-4" />
                         Create Post
@@ -126,17 +130,18 @@ export default function CommunityPage() {
             </div>
 
             {/* Sort tabs */}
-            <div className="bg-white rounded-lg shadow-sm border border-[#d4e8ea] px-4 py-2">
+            <div className="rounded-lg shadow-sm px-4 py-2"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
                 <div className="flex items-center gap-1">
                     {sortOptions.map(({ key, label, icon }) => (
                         <button
                             key={key}
                             onClick={() => setSort(key)}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                                sort === key
-                                    ? 'bg-[#22c1c3]/10 text-[#22c1c3]'
-                                    : 'text-[#95a5a6] hover:bg-[#f4fafb] hover:text-[#5a6c7d]'
-                            }`}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+                            style={{
+                                background: sort === key ? 'color-mix(in srgb, var(--brand-primary) 10%, transparent)' : 'transparent',
+                                color: sort === key ? 'var(--brand-primary)' : 'var(--text-muted)',
+                            }}
                         >
                             {icon}
                             {label}
@@ -148,18 +153,21 @@ export default function CommunityPage() {
             {/* Posts feed */}
             {loading ? (
                 <div className="flex items-center justify-center py-16">
-                    <Loader2 className="w-8 h-8 text-[#22c1c3] animate-spin" />
+                    <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-primary)' }} />
                 </div>
             ) : posts.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-sm border border-[#d4e8ea] p-12 text-center">
-                    <div className="w-16 h-16 bg-[#22c1c3]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Users className="w-8 h-8 text-[#22c1c3]" />
+                <div className="rounded-lg shadow-sm p-12 text-center"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                        style={{ background: 'color-mix(in srgb, var(--brand-primary) 10%, transparent)' }}>
+                        <Users className="w-8 h-8" style={{ color: 'var(--brand-primary)' }} />
                     </div>
-                    <h3 className="text-lg font-bold text-[#2c3e50] mb-2">No posts yet</h3>
-                    <p className="text-sm text-[#95a5a6] mb-4">Be the first to start a conversation in your campus community!</p>
+                    <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>No posts yet</h3>
+                    <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>Be the first to start a conversation in your campus community!</p>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-6 py-2 bg-[#22c1c3] text-white font-medium rounded-full hover:bg-[#1a9a9b] transition-colors text-sm"
+                        className="px-6 py-2 text-white font-medium rounded-full transition-colors text-sm"
+                        style={{ background: 'var(--brand-primary)' }}
                     >
                         Create the First Post
                     </button>

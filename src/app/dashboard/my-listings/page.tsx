@@ -97,99 +97,70 @@ export default function MyListingsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#e8f4f5] flex items-center justify-center">
-                <p className="text-[#5a6c7d]">Loading...</p>
+            <div className="flex items-center justify-center py-12">
+                <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-[#e8f4f5]">
-            {/* Header */}
-            <header className="bg-white border-b border-[#d4e8ea] px-8 py-4">
-                <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-[#22c1c3] rounded-lg flex items-center justify-center text-white font-bold">
-                            ⚡
-                        </div>
-                        <span className="text-xl font-bold text-[#2c3e50]">OhmPlace</span>
-                    </Link>
-                    <button
-                        onClick={() => signOut()}
-                        className="text-[#5a6c7d] hover:text-[#2c3e50] transition-colors"
-                    >
-                        Sign Out
-                    </button>
+        <div>
+            {/* Page Header */}
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>My Listings</h1>
+                    <p style={{ color: 'var(--text-muted)' }}>
+                        {activeCount} active, {completedCount} sold
+                    </p>
                 </div>
-            </header>
-
-            {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-8 py-8">
-                {/* Page Header */}
-                <div className="flex justify-between items-start mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold text-[#2c3e50] mb-1">My Listings</h1>
-                        <p className="text-[#95a5a6]">
-                            {activeCount} active, {completedCount} sold
-                        </p>
-                    </div>
-                    <Link
-                        href="/dashboard/new-listing"
-                        className="bg-[#22c1c3] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#1a9a9b] transition-colors flex items-center gap-2"
-                    >
-                        <span className="text-xl">+</span> Post a Part
-                    </Link>
-                </div>
-
-                {/* Filter Tabs */}
-                <div className="flex gap-2 mb-8">
-                    <button
-                        onClick={() => setActiveTab('all')}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === 'all'
-                            ? 'bg-[#22c1c3] text-white'
-                            : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
-                            }`}
-                    >
-                        All ({listings.length})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('active')}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === 'active'
-                            ? 'bg-[#22c1c3] text-white'
-                            : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
-                            }`}
-                    >
-                        Active ({activeCount})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('sold')}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === 'sold'
-                            ? 'bg-[#22c1c3] text-white'
-                            : 'bg-white text-[#5a6c7d] hover:bg-[#f4fafb]'
-                            }`}
-                    >
-                        Sold ({completedCount})
-                    </button>
-                </div>
-
-                {/* Listings Grid */}
-                {filteredListings.length === 0 ? (
-                    <div className="bg-white rounded-lg p-12 text-center">
-                        <p className="text-[#95a5a6]">No listings in this category</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredListings.map((listing) => (
-                            <ListingCard
-                                key={listing.id}
-                                listing={listing}
-                                actionLabel={listing.status === 'available' ? 'Mark Sold' : undefined}
-                                onAction={listing.status === 'available' ? (l) => markAsCompleted(l.id) : undefined}
-                            />
-                        ))}
-                    </div>
-                )}
+                <Link
+                    href="/dashboard/new-listing"
+                    className="text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                    style={{ background: 'var(--brand-primary)' }}
+                >
+                    <span className="text-xl">+</span> Post a Part
+                </Link>
             </div>
+
+            {/* Filter Tabs */}
+            <div className="flex gap-2 mb-8">
+                {([
+                    { key: 'all' as FilterTab, label: `All (${listings.length})` },
+                    { key: 'active' as FilterTab, label: `Active (${activeCount})` },
+                    { key: 'sold' as FilterTab, label: `Sold (${completedCount})` },
+                ]).map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        className="px-4 py-2 rounded-full text-sm font-medium transition-colors"
+                        style={{
+                            background: activeTab === tab.key ? 'var(--brand-primary)' : 'var(--bg-card)',
+                            color: activeTab === tab.key ? '#ffffff' : 'var(--text-secondary)',
+                            border: activeTab === tab.key ? 'none' : '1px solid var(--border-subtle)',
+                        }}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Listings Grid */}
+            {filteredListings.length === 0 ? (
+                <div className="rounded-lg p-12 text-center" style={{ background: 'var(--bg-card)' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No listings in this category</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredListings.map((listing) => (
+                        <ListingCard
+                            key={listing.id}
+                            listing={listing}
+                            actionLabel={listing.status === 'available' ? 'Mark Sold' : undefined}
+                            onAction={listing.status === 'available' ? (l) => markAsCompleted(l.id) : undefined}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     )
 }

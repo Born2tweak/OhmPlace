@@ -17,25 +17,22 @@ export default function VoteButton({ upvotes, downvotes, userVote, onVote, size 
     const padding = size === 'sm' ? 'px-1 py-0.5' : 'px-1.5 py-1'
 
     return (
-        <div className="flex items-center gap-0.5 bg-[#f4fafb] rounded-full">
+        <div className="flex items-center gap-0.5 rounded-full"
+            style={{ background: 'var(--bg-lighter)' }}>
             <button
                 onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
                     onVote(userVote === 1 ? 0 : 1)
                 }}
-                className={`${padding} rounded-full transition-colors hover:bg-[#d4e8ea] ${
-                    userVote === 1 ? 'text-[#22c1c3]' : 'text-[#95a5a6]'
-                }`}
+                className={`${padding} rounded-full transition-colors`}
+                style={{ color: userVote === 1 ? 'var(--brand-primary)' : 'var(--text-muted)' }}
                 title="Upvote"
             >
                 <ChevronUp className={iconSize} strokeWidth={userVote === 1 ? 3 : 2} />
             </button>
-            <span className={`font-semibold min-w-[1.5rem] text-center ${
-                size === 'sm' ? 'text-xs' : 'text-sm'
-            } ${
-                userVote === 1 ? 'text-[#22c1c3]' : userVote === -1 ? 'text-[#e74c3c]' : 'text-[#5a6c7d]'
-            }`}>
+            <span className={`font-semibold min-w-[1.5rem] text-center ${size === 'sm' ? 'text-xs' : 'text-sm'}`}
+                style={{ color: userVote === 1 ? 'var(--brand-primary)' : userVote === -1 ? '#e74c3c' : 'var(--text-secondary)' }}>
                 {score}
             </span>
             <button
@@ -44,9 +41,8 @@ export default function VoteButton({ upvotes, downvotes, userVote, onVote, size 
                     e.stopPropagation()
                     onVote(userVote === -1 ? 0 : -1)
                 }}
-                className={`${padding} rounded-full transition-colors hover:bg-[#d4e8ea] ${
-                    userVote === -1 ? 'text-[#e74c3c]' : 'text-[#95a5a6]'
-                }`}
+                className={`${padding} rounded-full transition-colors`}
+                style={{ color: userVote === -1 ? '#e74c3c' : 'var(--text-muted)' }}
                 title="Downvote"
             >
                 <ChevronDown className={iconSize} strokeWidth={userVote === -1 ? 3 : 2} />

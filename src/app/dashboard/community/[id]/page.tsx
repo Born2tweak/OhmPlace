@@ -74,7 +74,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     const handleVote = async (vote: number) => {
         if (!post) return
 
-        // Optimistic update
         const oldVote = post.userVote
         let upDelta = 0, downDelta = 0
         if (oldVote === 1) upDelta--
@@ -99,7 +98,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     const handleCommentVote = async (commentId: string, vote: number) => {
         if (!post) return
 
-        // Optimistic update
         setPost({
             ...post,
             comments: post.comments.map(c => {
@@ -158,18 +156,20 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     if (loading) {
         return (
             <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-8 h-8 text-[#22c1c3] animate-spin" />
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-primary)' }} />
             </div>
         )
     }
 
     if (!post) {
         return (
-            <div className="bg-white rounded-lg shadow-sm border border-[#d4e8ea] p-12 text-center">
-                <h3 className="text-lg font-bold text-[#2c3e50] mb-2">Post not found</h3>
+            <div className="rounded-lg shadow-sm p-12 text-center"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Post not found</h3>
                 <button
                     onClick={() => router.push('/dashboard/community')}
-                    className="text-[#22c1c3] hover:underline text-sm"
+                    className="hover:underline text-sm"
+                    style={{ color: 'var(--brand-primary)' }}
                 >
                     Back to Community
                 </button>
@@ -184,17 +184,19 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
             {/* Back button */}
             <button
                 onClick={() => router.push('/dashboard/community')}
-                className="flex items-center gap-2 text-sm text-[#5a6c7d] hover:text-[#2c3e50] transition-colors"
+                className="flex items-center gap-2 text-sm transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
             >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Community
             </button>
 
             {/* Post */}
-            <div className="bg-white rounded-lg shadow-sm border border-[#d4e8ea] p-6">
+            <div className="rounded-lg shadow-sm p-6"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
                 {/* Header */}
-                <div className="flex items-center gap-2 text-xs text-[#95a5a6] mb-3">
-                    <span className="font-semibold text-[#5a6c7d]">{post.username}</span>
+                <div className="flex items-center gap-2 text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                    <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{post.username}</span>
                     <span>·</span>
                     <span>{timeAgo(post.created_at)}</span>
                     <span>·</span>
@@ -207,15 +209,15 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                         <FlairBadge flair={post.flair} />
                     </div>
                 )}
-                <h1 className="text-2xl font-bold text-[#2c3e50] mb-3">{post.title}</h1>
+                <h1 className="text-2xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>{post.title}</h1>
 
                 {/* Body */}
                 {post.body && (
-                    <p className="text-[#5a6c7d] whitespace-pre-wrap mb-4 leading-relaxed">{post.body}</p>
+                    <p className="whitespace-pre-wrap mb-4 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{post.body}</p>
                 )}
 
                 {/* Action bar */}
-                <div className="flex items-center gap-3 pt-3 border-t border-[#f4fafb]">
+                <div className="flex items-center gap-3 pt-3" style={{ borderTop: '1px solid var(--bg-lighter)' }}>
                     <VoteButton
                         upvotes={post.upvotes}
                         downvotes={post.downvotes}
@@ -223,14 +225,16 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                         onVote={handleVote}
                     />
 
-                    <div className="flex items-center gap-1.5 text-[#95a5a6] text-sm px-2 py-1">
+                    <div className="flex items-center gap-1.5 text-sm px-2 py-1"
+                        style={{ color: 'var(--text-muted)' }}>
                         <MessageSquare className="w-4 h-4" />
                         <span>{post.comment_count} Comments</span>
                     </div>
 
                     <button
                         onClick={handleShare}
-                        className="flex items-center gap-1.5 text-[#95a5a6] text-sm px-2 py-1 rounded-full hover:bg-[#f4fafb] transition-colors"
+                        className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full transition-colors"
+                        style={{ color: 'var(--text-muted)' }}
                     >
                         <Share2 className="w-4 h-4" />
                         Share
@@ -239,7 +243,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                     {isOwner && (
                         <button
                             onClick={handleDelete}
-                            className="flex items-center gap-1.5 text-[#95a5a6] text-sm px-2 py-1 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors ml-auto"
+                            className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors ml-auto"
+                            style={{ color: 'var(--text-muted)' }}
                         >
                             <Trash2 className="w-4 h-4" />
                             Delete
@@ -249,7 +254,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
             </div>
 
             {/* Comments section */}
-            <div className="bg-white rounded-lg shadow-sm border border-[#d4e8ea] p-6">
+            <div className="rounded-lg shadow-sm p-6"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
                 <CommentSection
                     comments={post.comments}
                     currentUserId={user?.id || ''}

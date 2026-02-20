@@ -27,6 +27,28 @@
   --shadow-button: 0 2px 8px rgba(34, 193, 195, 0.2);
 }
 
+[data-theme='dark'] {
+  --brand-primary: #2dd4d6;
+  --brand-secondary: #22b8ba;
+  --brand-accent: #1a9ea0;
+
+  --bg-light-blue: #0f1729;
+  --bg-lighter: #1a2332;
+  --bg-card: #1e2a3a;
+  --bg-card-hover: #253545;
+
+  --text-primary: #e8edf2;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --border-subtle: #2a3a4a;
+  --border-hover: #2dd4d6;
+
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-button: 0 2px 8px rgba(45, 212, 214, 0.15);
+}
+
 @theme inline {
   --color-background: var(--bg-light-blue);
   --color-foreground: var(--text-primary);
