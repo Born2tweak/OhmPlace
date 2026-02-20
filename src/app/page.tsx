@@ -163,6 +163,7 @@ export default function Home() {
                                         <div className="w-full">
                                             {mode === 'sign-up' ? (
                                                 <SignUp
+                                                    forceRedirectUrl="/dashboard"
                                                     appearance={{
                                                         elements: {
                                                             rootBox: 'w-full mx-auto',
@@ -193,6 +194,7 @@ export default function Home() {
                                                 />
                                             ) : (
                                                 <SignIn
+                                                    forceRedirectUrl="/dashboard"
                                                     appearance={{
                                                         elements: {
                                                             rootBox: 'w-full mx-auto',

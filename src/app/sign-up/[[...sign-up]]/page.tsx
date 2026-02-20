@@ -12,6 +12,7 @@ export default function SignUpPage() {
 
       <div className="relative z-10">
         <SignUp
+          forceRedirectUrl="/dashboard"
           appearance={{
             elements: {
               rootBox: 'mx-auto',
