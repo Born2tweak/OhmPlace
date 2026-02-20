@@ -126,7 +126,7 @@ function MessagesContent() {
                                         return {
                                             ...c,
                                             other_user: {
-                                                ...c.other_user,
+                                                id: id,
                                                 email: userData.email,
                                                 full_name: userData.full_name,
                                                 avatar_url: userData.avatar_url
