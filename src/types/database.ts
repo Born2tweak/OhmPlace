@@ -11,6 +11,8 @@ export type Database = {
                     condition: 'new' | 'used-good' | 'used-fair'
                     price: number
                     status: 'available' | 'sold' | 'reserved'
+                    promoted: boolean
+                    promoted_until: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -23,6 +25,8 @@ export type Database = {
                     condition: 'new' | 'used-good' | 'used-fair'
                     price: number
                     status?: 'available' | 'sold' | 'reserved'
+                    promoted?: boolean
+                    promoted_until?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -35,6 +39,8 @@ export type Database = {
                     condition?: 'new' | 'used-good' | 'used-fair'
                     price?: number
                     status?: 'available' | 'sold' | 'reserved'
+                    promoted?: boolean
+                    promoted_until?: string | null
                     created_at?: string
                     updated_at?: string
                 }

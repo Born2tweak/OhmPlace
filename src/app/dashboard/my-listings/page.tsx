@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useUser, useClerk } from '@clerk/nextjs'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Listing, ListingImage } from '@/types/database'
 import ListingCard from '@/components/ListingCard'
+import BoostModal from '@/components/BoostModal'
+import { Zap } from 'lucide-react'
 
 interface ListingWithImages extends Listing {
     images: ListingImage[]
@@ -16,10 +19,20 @@ type FilterTab = 'all' | 'active' | 'sold'
 export default function MyListingsPage() {
     const { user } = useUser()
     const { signOut } = useClerk()
+    const searchParams = useSearchParams()
     const [listings, setListings] = useState<ListingWithImages[]>([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<FilterTab>('all')
     const [updatingId, setUpdatingId] = useState<string | null>(null)
+    const [boostListingId, setBoostListingId] = useState<string | null>(null)
+    const [showBoostedBanner, setShowBoostedBanner] = useState(false)
+
+    useEffect(() => {
+        if (searchParams.get('boosted') === 'true') {
+            setShowBoostedBanner(true)
+            setTimeout(() => setShowBoostedBanner(false), 5000)
+        }
+    }, [searchParams])
 
     useEffect(() => {
         if (user?.id) {
@@ -86,6 +99,10 @@ export default function MyListingsPage() {
         }
     }
 
+    const isPromoted = (listing: ListingWithImages) => {
+        return listing.promoted && listing.promoted_until && new Date(listing.promoted_until) > new Date()
+    }
+
     const filteredListings = listings.filter(listing => {
         if (activeTab === 'active') return listing.status === 'available'
         if (activeTab === 'sold') return listing.status === 'sold'
@@ -94,6 +111,8 @@ export default function MyListingsPage() {
 
     const activeCount = listings.filter(l => l.status === 'available').length
     const completedCount = listings.filter(l => l.status === 'sold').length
+
+    const boostListing = listings.find(l => l.id === boostListingId)
 
     if (loading) {
         return (
@@ -105,6 +124,15 @@ export default function MyListingsPage() {
 
     return (
         <div>
+            {/* Boosted success banner */}
+            {showBoostedBanner && (
+                <div className="mb-4 p-4 rounded-lg text-sm font-medium flex items-center gap-2"
+                    style={{ background: 'color-mix(in srgb, #22c55e 15%, transparent)', color: '#16a34a', border: '1px solid #22c55e' }}>
+                    <Zap className="w-4 h-4" />
+                    Your listing has been boosted! It will appear at the top of the marketplace.
+                </div>
+            )}
+
             {/* Page Header */}
             <div className="flex justify-between items-start mb-6">
                 <div>
@@ -152,15 +180,51 @@ export default function MyListingsPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredListings.map((listing) => (
-                        <ListingCard
-                            key={listing.id}
-                            listing={listing}
-                            actionLabel={listing.status === 'available' ? 'Mark Sold' : undefined}
-                            onAction={listing.status === 'available' ? (l) => markAsCompleted(l.id) : undefined}
-                        />
+                        <div key={listing.id} className="relative">
+                            <ListingCard
+                                listing={listing}
+                                actionLabel={listing.status === 'available' ? 'Mark Sold' : undefined}
+                                onAction={listing.status === 'available' ? (l) => markAsCompleted(l.id) : undefined}
+                            />
+                            {listing.status === 'available' && (
+                                <div className="mt-2">
+                                    {isPromoted(listing) ? (
+                                        <div className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg"
+                                            style={{ background: 'color-mix(in srgb, #F59E0B 15%, transparent)', color: '#D97706' }}>
+                                            <Zap className="w-3.5 h-3.5" />
+                                            Boosted until {new Date(listing.promoted_until!).toLocaleDateString()}
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setBoostListingId(listing.id)}
+                                            className="w-full flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+                                            style={{
+                                                border: '1px dashed var(--border-subtle)',
+                                                color: 'var(--brand-primary)',
+                                                background: 'transparent',
+                                            }}
+                                        >
+                                            <Zap className="w-4 h-4" />
+                                            Boost This Listing
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </div>
+            )}
+
+            {/* Boost Modal */}
+            {boostListing && (
+                <BoostModal
+                    isOpen={!!boostListingId}
+                    onClose={() => setBoostListingId(null)}
+                    listingId={boostListing.id}
+                    listingTitle={boostListing.title}
+                />
             )}
         </div>
     )
 }
+

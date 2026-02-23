@@ -53,6 +53,12 @@ export default function ListingCard({
                         {listing.status}
                     </div>
                 )}
+                {listing.promoted && listing.promoted_until && new Date(listing.promoted_until) > new Date() && (
+                    <div className="absolute top-2 left-2 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1"
+                        style={{ background: 'rgba(245, 158, 11, 0.9)', color: '#fff' }}>
+                        ⚡ Promoted
+                    </div>
+                )}
             </div>
 
             {/* Content */}

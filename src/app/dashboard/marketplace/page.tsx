@@ -84,6 +84,12 @@ export default function MarketplacePage() {
         const matchesCondition = selectedCondition ? listing.condition === selectedCondition : true
 
         return matchesSearch && matchesCategory && matchesCondition
+    }).sort((a, b) => {
+        const aPromoted = a.promoted && a.promoted_until && new Date(a.promoted_until) > new Date()
+        const bPromoted = b.promoted && b.promoted_until && new Date(b.promoted_until) > new Date()
+        if (aPromoted && !bPromoted) return -1
+        if (!aPromoted && bPromoted) return 1
+        return 0
     })
 
     const clearFilters = () => {
