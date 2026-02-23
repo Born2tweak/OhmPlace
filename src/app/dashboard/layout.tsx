@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Package, PlusCircle, Settings, LogOut, ShoppingBag, LayoutDashboard, Store, Users, MessageSquare, Sun, Moon } from 'lucide-react'
+import { Settings, LogOut, ShoppingBag, LayoutDashboard, Store, Users, MessageSquare, Sun, Moon } from 'lucide-react'
 import { useClerk } from '@clerk/nextjs'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -72,33 +72,39 @@ export default function DashboardLayout({
     ]
 
     return (
-        <div className="min-h-screen" style={{ background: 'var(--bg-light-blue)' }}>
+        <div className="min-h-screen" style={{ background: 'var(--bg-gradient)' }}>
             {/* Header */}
-            <header style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-subtle)' }}>
+            <header className="glass sticky top-0 z-50" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <Link href="/" className="text-2xl font-bold" style={{ color: 'var(--brand-primary)' }}>
+                        <Link href="/" className="text-2xl font-bold gradient-text tracking-tight">
                             OhmPlace
                         </Link>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             <button
                                 onClick={toggleTheme}
-                                className="p-2 rounded-lg transition-colors hover:opacity-80"
-                                style={{ color: 'var(--text-secondary)' }}
+                                className="p-2 rounded-xl transition-all hover:scale-105"
+                                style={{
+                                    color: 'var(--text-secondary)',
+                                    background: 'var(--bg-lighter)',
+                                }}
                                 aria-label="Toggle theme"
                             >
-                                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                             </button>
-                            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            <span className="text-sm font-medium hidden sm:inline" style={{ color: 'var(--text-secondary)' }}>
                                 {user?.primaryEmailAddress?.emailAddress}
                             </span>
                             <button
                                 onClick={() => signOut()}
-                                className="flex items-center gap-2 text-sm transition-colors"
-                                style={{ color: 'var(--text-secondary)' }}
+                                className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02]"
+                                style={{
+                                    color: 'var(--text-muted)',
+                                    background: 'var(--bg-lighter)',
+                                }}
                             >
-                                <LogOut className="w-4 h-4" />
-                                Sign Out
+                                <LogOut className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Sign Out</span>
                             </button>
                         </div>
                     </div>
@@ -109,8 +115,8 @@ export default function DashboardLayout({
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar */}
                     <aside className="lg:col-span-1">
-                        <nav className="rounded-lg shadow-md p-4" style={{ background: 'var(--bg-card)' }}>
-                            <ul className="space-y-2">
+                        <nav className="glass rounded-2xl p-3 sticky top-24">
+                            <ul className="space-y-1">
                                 {navItems.map((item) => {
                                     const Icon = item.icon
                                     const isActive = pathname === item.href
@@ -118,14 +124,18 @@ export default function DashboardLayout({
                                         <li key={item.href}>
                                             <Link
                                                 href={item.href}
-                                                className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
+                                                className="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all"
                                                 style={{
-                                                    background: isActive ? 'var(--brand-primary)' : 'transparent',
+                                                    background: isActive
+                                                        ? 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))'
+                                                        : 'transparent',
                                                     color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                                                    fontWeight: isActive ? 600 : 500,
+                                                    boxShadow: isActive ? 'var(--shadow-button)' : 'none',
                                                 }}
                                             >
-                                                <Icon className="w-5 h-5" />
-                                                <span className="font-medium">{item.label}</span>
+                                                <Icon className="w-[18px] h-[18px]" />
+                                                <span className="text-sm">{item.label}</span>
                                             </Link>
                                         </li>
                                     )

@@ -7,24 +7,31 @@
   --brand-accent: #15868e;
 
   /* Backgrounds */
-  --bg-light-blue: #e8f4f5;
-  --bg-lighter: #f4fafb;
+  --bg-light-blue: #f0f7f8;
+  --bg-lighter: #f7fbfc;
   --bg-card: #ffffff;
   --bg-card-hover: #f0feff;
 
   /* Text */
-  --text-primary: #2c3e50;
+  --text-primary: #1a2b3c;
   --text-secondary: #5a6c7d;
   --text-muted: #95a5a6;
 
   /* Borders */
-  --border-subtle: #d4e8ea;
+  --border-subtle: #e2eef0;
   --border-hover: #22c1c3;
 
   /* Effects */
-  --shadow-soft: 0 4px 12px rgba(34, 193, 195, 0.08);
-  --shadow-hover: 0 8px 24px rgba(34, 193, 195, 0.15);
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(34, 193, 195, 0.06);
+  --shadow-hover: 0 8px 30px rgba(34, 193, 195, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-button: 0 2px 8px rgba(34, 193, 195, 0.2);
+
+  /* Gradient bg */
+  --bg-gradient: linear-gradient(135deg, #f0f7f8 0%, #e8f4f5 50%, #f0f0fa 100%);
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(34, 193, 195, 0.12);
 }
 
 [data-theme='dark'] {
@@ -32,21 +39,28 @@
   --brand-secondary: #22b8ba;
   --brand-accent: #1a9ea0;
 
-  --bg-light-blue: #0f1729;
-  --bg-lighter: #1a2332;
-  --bg-card: #1e2a3a;
-  --bg-card-hover: #253545;
+  --bg-light-blue: #0c1220;
+  --bg-lighter: #141e2e;
+  --bg-card: #1a2536;
+  --bg-card-hover: #1f2e42;
 
   --text-primary: #e8edf2;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
 
-  --border-subtle: #2a3a4a;
+  --border-subtle: #243348;
   --border-hover: #2dd4d6;
 
-  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-hover: 0 8px 30px rgba(45, 212, 214, 0.08), 0 4px 12px rgba(0, 0, 0, 0.2);
   --shadow-button: 0 2px 8px rgba(45, 212, 214, 0.15);
+
+  /* Dark gradient bg */
+  --bg-gradient: linear-gradient(135deg, #0c1220 0%, #0f1729 40%, #121a2f 100%);
+
+  /* Glass */
+  --glass-bg: rgba(26, 37, 54, 0.8);
+  --glass-border: rgba(45, 212, 214, 0.08);
 }
 
 @theme inline {
@@ -57,24 +71,63 @@
 }
 
 body {
-  background: var(--bg-light-blue);
+  background: var(--bg-gradient);
   color: var(--text-primary);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Custom Scrollbars ────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+/* ── Card System ──────────────────────────────── */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 1.5rem;
+  border-radius: 1rem;
   box-shadow: var(--shadow-soft);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
 }
 
 .card:hover {
   box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  border-color: var(--glass-border);
 }
 
+/* ── Glass Effect ─────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+}
+
+/* ── Typography Helpers ───────────────────────── */
 .gradient-text {
   background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
   -webkit-background-clip: text;
@@ -82,8 +135,9 @@ body {
   background-clip: text;
 }
 
+/* ── Button System ────────────────────────────── */
 .btn-primary {
-  background: var(--brand-primary);
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
   color: white;
   font-weight: 600;
   border-radius: 0.75rem;
@@ -91,18 +145,36 @@ body {
   transition: all 0.2s ease;
   box-shadow: var(--shadow-button);
   border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .btn-primary:hover {
-  background: var(--brand-secondary);
   transform: translateY(-1px);
   box-shadow: var(--shadow-hover);
 }
 
+.btn-primary:hover::after {
+  opacity: 1;
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
 .btn-secondary {
   background: transparent;
-  border: 2px solid var(--brand-primary);
-  color: var(--brand-primary);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-secondary);
   font-weight: 600;
   border-radius: 0.75rem;
   padding: 0.75rem 2rem;
@@ -111,17 +183,78 @@ body {
 
 .btn-secondary:hover {
   background: var(--bg-card-hover);
-  border-color: var(--brand-secondary);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
 }
 
-/* Clerk Overrides - completely remove social auth UI and blank spaces */
+/* ── Animations ───────────────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+.stagger-4 {
+  animation-delay: 0.2s;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+}
+
+.stagger-6 {
+  animation-delay: 0.3s;
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+      var(--bg-lighter) 25%,
+      var(--bg-card-hover) 50%,
+      var(--bg-lighter) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
+/* ── Clerk Overrides ──────────────────────────── */
 .cl-socialButtons,
 .cl-socialButtonsBlock,
 .cl-socialButtonsBlockButton,
 .cl-socialButtonsBlockButtonText,
 .cl-socialButtonsProviderIcon,
 .cl-internal-b3fm6y,
-/* last used badge */
 .cl-badge,
 .cl-tagPillIcon,
 .cl-alternativeMethodsBlockButton,
@@ -158,7 +291,6 @@ body {
   overflow: hidden !important;
 }
 
-/* Center the inner white form box */
 .cl-cardBox {
   margin-left: auto !important;
   margin-right: auto !important;
@@ -166,20 +298,16 @@ body {
   justify-content: center !important;
 }
 
-
-/* Remove spacing from parent containers */
 .cl-card,
 .cl-main,
 .cl-form {
   gap: 0.75rem !important;
 }
 
-/* Ensure form fields are properly spaced */
 .cl-formFieldRow {
   margin-bottom: 1rem !important;
 }
 
-/* Make Clerk form responsive */
 .cl-rootBox {
   width: 100% !important;
 }
@@ -189,7 +317,7 @@ body {
   max-width: 100% !important;
 }
 
-/* Responsive adjustments */
+/* ── Responsive ───────────────────────────────── */
 @media (max-width: 640px) {
   .card {
     padding: 1.5rem !important;
