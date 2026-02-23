@@ -54,6 +54,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     const router = useRouter()
     const [post, setPost] = useState<PostDetail | null>(null)
     const [loading, setLoading] = useState(true)
+    const [messaging, setMessaging] = useState(false)
 
     const fetchPost = useCallback(async () => {
         try {
@@ -153,6 +154,62 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         navigator.clipboard.writeText(window.location.href)
     }
 
+    const handleMessageAuthor = async () => {
+        if (!user || !post) return
+
+        if (user.id === post.user_id) {
+            alert("You can't message yourself!")
+            return
+        }
+
+        setMessaging(true)
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+
+        try {
+            // Check for existing conversation (bidirectional check)
+            const { data: c1, error: e1 } = await supabase
+                .from('conversations')
+                .select('*')
+                .match({ participant_1: user.id, participant_2: post.user_id })
+                .maybeSingle()
+
+            const { data: c2, error: e2 } = await supabase
+                .from('conversations')
+                .select('*')
+                .match({ participant_1: post.user_id, participant_2: user.id })
+                .maybeSingle()
+
+            if (e1 && e1.code !== 'PGRST116') throw e1
+            if (e2 && e2.code !== 'PGRST116') throw e2
+
+            let conversationId = c1?.id || c2?.id
+
+            if (!conversationId) {
+                // Create new conversation
+                const { data: newConvo, error: createError } = await supabase
+                    .from('conversations')
+                    .insert({
+                        participant_1: user.id,
+                        participant_2: post.user_id,
+                        last_message_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single()
+
+                if (createError) throw createError
+                conversationId = newConvo.id
+            }
+
+            // Redirect to messages
+            router.push(`/dashboard/messages?id=${conversationId}`)
+        } catch (error) {
+            console.error('Error starting conversation:', error)
+            alert(`Failed to start conversation: ${error instanceof Error ? error.message : JSON.stringify(error)}`)
+            setMessaging(false)
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-16">
@@ -239,6 +296,28 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                         <Share2 className="w-4 h-4" />
                         Share
                     </button>
+                    {!isOwner && (
+                        <button
+                            onClick={handleMessageAuthor}
+                            disabled={messaging}
+                            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full font-medium transition-colors ml-auto"
+                            style={{
+                                background: 'var(--brand-primary)',
+                                color: '#ffffff',
+                                opacity: messaging ? 0.7 : 1,
+                                cursor: messaging ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            {messaging ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <>
+                                    <MessageSquare className="w-4 h-4" />
+                                    Message
+                                </>
+                            )}
+                        </button>
+                    )}
 
                     {isOwner && (
                         <button

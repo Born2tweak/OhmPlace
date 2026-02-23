@@ -223,7 +223,7 @@ export default function EditListingPage() {
                                     type="radio"
                                     value={cond.value}
                                     checked={formData.condition === cond.value}
-                                    onChange={(e) => setFormData({ ...formData, condition: e.target.value as any })}
+                                    onChange={(e) => setFormData({ ...formData, condition: e.target.value as 'new' | 'used-good' | 'used-fair' | '' })}
                                     className="mr-3"
                                     style={{ accentColor: 'var(--brand-primary)' }}
                                 />
@@ -259,7 +259,7 @@ export default function EditListingPage() {
                     <select
                         id="status"
                         value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as 'available' | 'sold' | 'reserved' })}
                         className="w-full px-4 py-2 rounded-lg focus:outline-none"
                         style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-lighter)', color: 'var(--text-primary)' }}
                     >

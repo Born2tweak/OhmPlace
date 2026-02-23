@@ -110,9 +110,9 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
 
             // Redirect to messages
             router.push(`/dashboard/messages?id=${conversationId}`)
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error starting conversation:', error)
-            alert(`Failed to start conversation: ${error.message || JSON.stringify(error)}`)
+            alert(`Failed to start conversation: ${error instanceof Error ? error.message : JSON.stringify(error)}`)
             setMessaging(false)
         }
     }
