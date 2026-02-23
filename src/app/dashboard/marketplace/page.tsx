@@ -103,7 +103,7 @@ export default function MarketplacePage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Marketplace</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Browse all items posted by students</p>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Browse all items posted by students</p>
                 </div>
 
                 {/* Search Bar */}
@@ -125,8 +125,7 @@ export default function MarketplacePage() {
             </div>
 
             {/* Filters */}
-            <div className="p-4 rounded-xl shadow-sm"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+            <div className="glass p-4 rounded-xl">
                 <div className="flex items-center justify-between mb-4 md:mb-0">
                     <button
                         onClick={() => setShowFilters(!showFilters)}
@@ -196,19 +195,26 @@ export default function MarketplacePage() {
 
             {/* Listings Grid */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                        <div key={i} className="rounded-xl aspect-[4/5] animate-pulse"
-                            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+                            <div className="aspect-square skeleton" />
+                            <div className="p-4 space-y-3" style={{ background: 'var(--bg-card)' }}>
+                                <div className="skeleton h-5 w-3/4" />
+                                <div className="skeleton h-4 w-1/2" />
+                                <div className="skeleton h-3 w-full" />
+                            </div>
+                        </div>
                     ))}
                 </div>
             ) : filteredListings.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredListings.map((listing) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredListings.map((listing, i) => (
                         <ListingCard
                             key={listing.id}
                             listing={listing}
                             linkTo={`/dashboard/marketplace/${listing.id}`}
+                            index={i}
                         />
                     ))}
                 </div>

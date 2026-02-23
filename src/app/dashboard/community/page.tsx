@@ -103,25 +103,24 @@ export default function CommunityPage() {
     return (
         <div className="space-y-4">
             {/* Community header */}
-            <div className="rounded-lg shadow-sm p-5"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+            <div className="glass rounded-2xl p-5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center"
                             style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}>
-                            <Users className="w-6 h-6 text-white" />
+                            <Users className="w-5 h-5 text-white" />
                         </div>
                         <div>
                             <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
                                 {campus ? campus.split('.')[0].charAt(0).toUpperCase() + campus.split('.')[0].slice(1) : 'Campus'} Community
                             </h1>
-                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{campus}</p>
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{campus}</p>
                         </div>
                     </div>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 text-white font-medium rounded-full transition-colors text-sm"
-                        style={{ background: 'var(--brand-primary)' }}
+                        className="flex items-center gap-2 px-5 py-2.5 text-white font-semibold rounded-xl transition-all text-sm hover:scale-[1.02]"
+                        style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))', boxShadow: 'var(--shadow-button)' }}
                     >
                         <Plus className="w-4 h-4" />
                         Create Post
@@ -130,16 +129,15 @@ export default function CommunityPage() {
             </div>
 
             {/* Sort tabs */}
-            <div className="rounded-lg shadow-sm px-4 py-2"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+            <div className="glass rounded-xl px-4 py-2">
                 <div className="flex items-center gap-1">
                     {sortOptions.map(({ key, label, icon }) => (
                         <button
                             key={key}
                             onClick={() => setSort(key)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all"
                             style={{
-                                background: sort === key ? 'color-mix(in srgb, var(--brand-primary) 10%, transparent)' : 'transparent',
+                                background: sort === key ? 'color-mix(in srgb, var(--brand-primary) 12%, transparent)' : 'transparent',
                                 color: sort === key ? 'var(--brand-primary)' : 'var(--text-muted)',
                             }}
                         >
@@ -152,13 +150,22 @@ export default function CommunityPage() {
 
             {/* Posts feed */}
             {loading ? (
-                <div className="flex items-center justify-center py-16">
-                    <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-primary)' }} />
+                <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="card p-5">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-8 h-8 rounded-full skeleton" />
+                                <div className="skeleton h-4 w-24" />
+                            </div>
+                            <div className="skeleton h-5 w-3/4 mb-2" />
+                            <div className="skeleton h-4 w-full mb-1" />
+                            <div className="skeleton h-4 w-2/3" />
+                        </div>
+                    ))}
                 </div>
             ) : posts.length === 0 ? (
-                <div className="rounded-lg shadow-sm p-12 text-center"
-                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                <div className="card p-12 text-center">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
                         style={{ background: 'color-mix(in srgb, var(--brand-primary) 10%, transparent)' }}>
                         <Users className="w-8 h-8" style={{ color: 'var(--brand-primary)' }} />
                     </div>
@@ -166,21 +173,22 @@ export default function CommunityPage() {
                     <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>Be the first to start a conversation in your campus community!</p>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-6 py-2 text-white font-medium rounded-full transition-colors text-sm"
-                        style={{ background: 'var(--brand-primary)' }}
+                        className="px-6 py-2.5 text-white font-semibold rounded-xl transition-all text-sm hover:scale-[1.02]"
+                        style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))', boxShadow: 'var(--shadow-button)' }}
                     >
                         Create the First Post
                     </button>
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {posts.map(post => (
+                <div className="space-y-3 max-w-2xl">
+                    {posts.map((post, i) => (
                         <PostCard
                             key={post.id}
                             post={post}
                             currentUserId={user?.id || ''}
                             onVote={handleVote}
                             onDelete={handleDelete}
+                            index={i}
                         />
                     ))}
                 </div>
