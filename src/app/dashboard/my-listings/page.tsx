@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { useUser, useClerk } from '@clerk/nextjs'
 import { useSearchParams } from 'next/navigation'
@@ -16,7 +17,7 @@ interface ListingWithImages extends Listing {
 
 type FilterTab = 'all' | 'active' | 'sold'
 
-export default function MyListingsPage() {
+function MyListingsContent() {
     const { user } = useUser()
     const { signOut } = useClerk()
     const searchParams = useSearchParams()
@@ -228,3 +229,14 @@ export default function MyListingsPage() {
     )
 }
 
+export default function MyListingsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center py-16">
+                <div className="skeleton h-8 w-48" />
+            </div>
+        }>
+            <MyListingsContent />
+        </Suspense>
+    )
+}
