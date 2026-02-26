@@ -13,7 +13,7 @@ export async function POST(
     }
 
     const { id: postId } = await params
-    const { body } = await request.json()
+    const { body, parent_id } = await request.json()
 
     if (!body || body.length > 2000) {
         return NextResponse.json({ error: 'Comment is required (max 2000 chars)' }, { status: 400 })
@@ -32,6 +32,20 @@ export async function POST(
         return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
+    // If replying to a comment, verify parent exists
+    if (parent_id) {
+        const { data: parentComment } = await supabase
+            .from('comments')
+            .select('id')
+            .eq('id', parent_id)
+            .eq('post_id', postId)
+            .single()
+
+        if (!parentComment) {
+            return NextResponse.json({ error: 'Parent comment not found' }, { status: 404 })
+        }
+    }
+
     // Create comment
     const { data: comment, error } = await supabase
         .from('comments')
@@ -39,7 +53,8 @@ export async function POST(
             post_id: postId,
             user_id: user.userId,
             username: user.username,
-            body
+            body,
+            parent_id: parent_id || null
         })
         .select()
         .single() as { data: Record<string, unknown> | null; error: { message: string } | null }

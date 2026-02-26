@@ -8,6 +8,8 @@ import {
     AlertCircle, Camera, Loader2, Lock, Trash2
 } from 'lucide-react'
 import AvatarCropModal from '@/components/settings/AvatarCropModal'
+import { useToast } from '@/components/Toast'
+import { useTheme } from '@/components/ThemeProvider'
 
 type Section = 'profile' | 'account' | 'notifications' | 'appearance'
 
@@ -39,7 +41,8 @@ export default function SettingsPage() {
     })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
-    const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+    const { toast } = useToast()
+    const { theme, setTheme } = useTheme()
 
     // Avatar crop
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -56,15 +59,12 @@ export default function SettingsPage() {
         emailDigest: false,
     })
 
-    // Appearance
-    const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system')
+    // Appearance removed from local state, managed by ThemeProvider
 
     useEffect(() => {
         fetchProfile()
         const savedNotifs = localStorage.getItem('ohm_notif_prefs')
         if (savedNotifs) setNotifPrefs(JSON.parse(savedNotifs))
-        const savedTheme = localStorage.getItem('ohm_theme') as typeof theme
-        if (savedTheme) setTheme(savedTheme)
     }, [])
 
     const fetchProfile = async () => {
@@ -93,10 +93,6 @@ export default function SettingsPage() {
         }
     }
 
-    const showToast = (type: 'success' | 'error', msg: string) => {
-        setToast({ type, msg })
-        setTimeout(() => setToast(null), 3000)
-    }
 
     const saveProfile = async () => {
         setSaving(true)
@@ -111,10 +107,10 @@ export default function SettingsPage() {
                     year: profile.year,
                 }),
             })
-            if (res.ok) showToast('success', 'Profile saved successfully!')
-            else showToast('error', 'Failed to save profile.')
+            if (res.ok) toast('Profile saved successfully!', 'success')
+            else toast('Failed to save profile.', 'error')
         } catch {
-            showToast('error', 'Network error. Please try again.')
+            toast('Network error. Please try again.', 'error')
         } finally {
             setSaving(false)
         }
@@ -124,7 +120,7 @@ export default function SettingsPage() {
         const file = e.target.files?.[0]
         if (!file) return
         if (file.size > 5 * 1024 * 1024) {
-            showToast('error', 'Image must be under 5MB')
+            toast('Image must be under 5MB', 'error')
             return
         }
         const reader = new FileReader()
@@ -146,15 +142,15 @@ export default function SettingsPage() {
             if (res.ok) {
                 const data = await res.json()
                 setProfile(p => ({ ...p, avatar_url: data.avatar_url }))
-                showToast('success', 'Photo updated!')
+                toast('Photo updated!', 'success')
             } else {
                 const errData = await res.json().catch(() => ({ error: 'Unknown error' }))
                 console.error('[avatar] Upload failed:', res.status, errData)
-                showToast('error', `Upload failed: ${errData.error || res.statusText}`)
+                toast(`Upload failed: ${errData.error || res.statusText}`, 'error')
             }
         } catch (err) {
             console.error('[avatar] Network error:', err)
-            showToast('error', 'Network error uploading photo.')
+            toast('Network error uploading photo.', 'error')
         } finally {
             setAvatarUploading(false)
             setShowCropModal(false)
@@ -164,12 +160,12 @@ export default function SettingsPage() {
 
     const saveNotifications = () => {
         localStorage.setItem('ohm_notif_prefs', JSON.stringify(notifPrefs))
-        showToast('success', 'Notification preferences saved!')
+        toast('Notification preferences saved!', 'success')
     }
 
-    const saveAppearance = () => {
-        localStorage.setItem('ohm_theme', theme)
-        showToast('success', 'Appearance settings saved!')
+    const saveAppearance = (newTheme: 'system' | 'light' | 'dark') => {
+        setTheme(newTheme)
+        toast('Appearance settings saved!', 'success')
     }
 
     const navItems: { key: Section; label: string; icon: React.ReactNode; desc: string }[] = [
@@ -191,15 +187,6 @@ export default function SettingsPage() {
 
     return (
         <div className="max-w-4xl mx-auto">
-            {/* Toast */}
-            {toast && (
-                <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg transition-all duration-300 text-sm font-medium ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                    }`}>
-                    {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    {toast.msg}
-                </div>
-            )}
-
             {/* Hidden file input */}
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileSelect} className="hidden" />
 
@@ -248,10 +235,12 @@ export default function SettingsPage() {
                         <div style={{ borderTop: '1px solid var(--border-subtle)' }} className="pt-2 mt-2">
                             <button
                                 onClick={() => signOut({ redirectUrl: '/' })}
-                                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200 hover:bg-red-50 group cursor-pointer"
+                                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200 group cursor-pointer"
                                 style={{ color: 'var(--text-muted)' }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'color-mix(in srgb, #ef4444 10%, transparent)' }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
                             >
-                                <LogOut className="w-4 h-4 text-red-400" />
+                                <LogOut className="w-4 h-4 text-red-500" />
                                 <span className="text-sm font-medium text-red-500">Sign Out</span>
                             </button>
                         </div>
@@ -270,7 +259,7 @@ export default function SettingsPage() {
                                 <div className="flex items-center gap-4">
                                     <div className="relative">
                                         {currentAvatarUrl ? (
-                                            <img src={currentAvatarUrl} alt="avatar" className="w-20 h-20 rounded-full object-cover ring-2 ring-gray-200" />
+                                            <img src={currentAvatarUrl} alt="avatar" className="w-20 h-20 rounded-full object-cover ring-2 ring-[var(--border-subtle)]" />
                                         ) : (
                                             <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white" style={{ background: 'var(--brand-primary)' }}>
                                                 {profile.username?.[0]?.toUpperCase() || 'U'}
@@ -464,8 +453,10 @@ export default function SettingsPage() {
                                 <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>These actions are irreversible. Proceed with caution.</p>
                                 <button
                                     onClick={() => openUserProfile()}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-500 transition-all hover:bg-red-50 cursor-pointer"
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-500 transition-all cursor-pointer"
                                     style={{ border: '1px solid rgba(239,68,68,0.3)' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, #ef4444 10%, transparent)' }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                                 >
                                     <Trash2 className="w-4 h-4" />
                                     Delete Account
@@ -536,10 +527,10 @@ export default function SettingsPage() {
                                         { key: 'system', label: 'System', preview: 'Auto' },
                                         { key: 'light', label: 'Light', preview: '☀️' },
                                         { key: 'dark', label: 'Dark', preview: '🌙' },
-                                    ] as { key: typeof theme; label: string; preview: string }[]).map(({ key, label, preview }) => (
+                                    ] as { key: 'system' | 'light' | 'dark'; label: string; preview: string }[]).map(({ key, label, preview }) => (
                                         <button
                                             key={key}
-                                            onClick={() => setTheme(key)}
+                                            onClick={() => saveAppearance(key)}
                                             className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all cursor-pointer"
                                             style={{
                                                 border: theme === key
@@ -565,15 +556,7 @@ export default function SettingsPage() {
                                 </p>
                             </div>
 
-                            <div className="flex justify-end mt-5">
-                                <button
-                                    onClick={saveAppearance}
-                                    className="px-5 py-2.5 text-white font-semibold rounded-full text-sm transition-all hover:opacity-90 active:scale-95 cursor-pointer"
-                                    style={{ background: 'var(--brand-primary)' }}
-                                >
-                                    Save Appearance
-                                </button>
-                            </div>
+
                         </div>
                     )}
 

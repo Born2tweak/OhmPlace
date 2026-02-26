@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { MessageSquare, Share2, Trash2 } from 'lucide-react'
 import VoteButton from './VoteButton'
 import FlairBadge from './FlairBadge'
+import { useToast } from '@/components/Toast'
 
 interface Post {
     id: string
@@ -19,6 +20,7 @@ interface Post {
     comment_count: number
     created_at: string
     userVote: number
+    avatar_url?: string | null
 }
 
 interface PostCardProps {
@@ -48,11 +50,13 @@ function getInitials(name: string): string {
 
 export default function PostCard({ post, currentUserId, onVote, onDelete, index = 0 }: PostCardProps) {
     const isOwner = post.user_id === currentUserId
+    const { toast } = useToast()
 
     const handleShare = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
         navigator.clipboard.writeText(`${window.location.origin}/dashboard/community/${post.id}`)
+        toast('Link copied!', 'success')
     }
 
     return (
@@ -64,10 +68,14 @@ export default function PostCard({ post, currentUserId, onVote, onDelete, index 
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-3">
                     {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                        style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))' }}>
-                        {getInitials(post.username)}
-                    </div>
+                    {post.avatar_url ? (
+                        <img src={post.avatar_url} alt="avatar" className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-[var(--border-subtle)]" />
+                    ) : (
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                            style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))' }}>
+                            {getInitials(post.username)}
+                        </div>
+                    )}
                     <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                         <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{post.username}</span>
                         <span>·</span>
@@ -123,8 +131,10 @@ export default function PostCard({ post, currentUserId, onVote, onDelete, index 
                                 e.stopPropagation()
                                 onDelete(post.id)
                             }}
-                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors ml-auto"
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ml-auto"
                             style={{ color: 'var(--text-muted)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'color-mix(in srgb, #ef4444 10%, transparent)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
                         >
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>

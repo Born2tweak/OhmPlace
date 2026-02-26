@@ -4,7 +4,9 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare } from 'lucide-react'
+import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag } from 'lucide-react'
+import { useToast } from '@/components/Toast'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +49,7 @@ function MessagesContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const supabase = createClient()
+    const { toast } = useToast()
 
     // State
     const [conversations, setConversations] = useState<Conversation[]>([])
@@ -135,15 +138,6 @@ function MessagesContent() {
                                     }
                                     return c
                                 }))
-
-                                // Sync to Supabase for next time
-                                await supabase.from('profiles').upsert({
-                                    id: userData.id,
-                                    email: userData.email,
-                                    full_name: userData.full_name,
-                                    avatar_url: userData.avatar_url,
-                                    updated_at: new Date().toISOString()
-                                })
                             }
                         } catch (err) {
                             console.error(`Failed to fetch user ${id}`, err)
@@ -227,6 +221,22 @@ function MessagesContent() {
         }
     }, [selectedConvoId])
 
+    // Mark incoming messages as read when conversation is opened
+    useEffect(() => {
+        if (!selectedConvoId || !user) return
+
+        const markAsRead = async () => {
+            await supabase
+                .from('messages')
+                .update({ status: 'read' })
+                .eq('conversation_id', selectedConvoId)
+                .neq('sender_id', user.id)
+                .neq('status', 'read')
+        }
+
+        markAsRead()
+    }, [selectedConvoId, messages.length])
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages, loadingMessages])
@@ -248,7 +258,7 @@ function MessagesContent() {
 
         if (error) {
             console.error('Error sending message:', error)
-            alert('Failed to send message')
+            toast('Failed to send message', 'error')
             setMessageInput(text) // Revert on error
         } else {
             await supabase
@@ -309,8 +319,19 @@ function MessagesContent() {
                 {/* List */}
                 <div className="flex-1 overflow-y-auto">
                     {filteredConversations.length === 0 ? (
-                        <div className="p-8 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-                            No conversations yet
+                        <div className="p-8 text-center">
+                            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--bg-lighter)' }}>
+                                <MessageSquare className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
+                            </div>
+                            <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>No conversations yet</p>
+                            <Link
+                                href="/dashboard/marketplace"
+                                className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-full text-white transition-all hover:opacity-90"
+                                style={{ background: 'var(--brand-primary)' }}
+                            >
+                                <ShoppingBag className="w-3.5 h-3.5" />
+                                Browse Marketplace
+                            </Link>
                         </div>
                     ) : (
                         filteredConversations.map((convo) => (

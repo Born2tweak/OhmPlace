@@ -1,9 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import type { Listing, ListingImage } from '@/types/database'
 import Link from 'next/link'
-import { Zap } from 'lucide-react'
+import { Zap, Eye } from 'lucide-react'
 
 interface ListingWithImages extends Listing {
     images: ListingImage[]
@@ -24,6 +24,8 @@ export default function ListingCard({
     linkTo,
     index = 0
 }: ListingCardProps) {
+    const [imageHover, setImageHover] = useState(false)
+
     const formatPrice = (cents: number) => {
         return `$${(cents / 100).toFixed(2)}`
     }
@@ -40,22 +42,56 @@ export default function ListingCard({
 
     const CardContent = () => (
         <div
-            className={`card h-full flex flex-col overflow-hidden animate-fade-in-up stagger-${Math.min(index + 1, 6)}`}
-            style={{ opacity: 0, background: 'var(--bg-card)' }}
+            className={`h-full flex flex-col overflow-hidden rounded-2xl hover-lift animate-fade-in-up stagger-${Math.min(index + 1, 6)} ${isPromoted ? 'promoted-glow' : ''}`}
+            style={{
+                opacity: 0,
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                boxShadow: 'var(--shadow-soft)',
+            }}
         >
             {/* Image */}
-            <div className="aspect-square w-full relative overflow-hidden" style={{ background: 'var(--bg-lighter)' }}>
+            <div
+                className="aspect-square w-full relative overflow-hidden"
+                style={{ background: 'var(--bg-lighter)' }}
+                onMouseEnter={() => setImageHover(true)}
+                onMouseLeave={() => setImageHover(false)}
+            >
                 {coverImage ? (
                     <img
                         src={coverImage}
                         alt={listing.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500"
+                        style={{
+                            transform: imageHover ? 'scale(1.08)' : 'scale(1)',
+                        }}
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center" style={{ color: 'var(--text-muted)' }}>
                         <span className="text-4xl">🔌</span>
                     </div>
                 )}
+
+                {/* Hover overlay */}
+                <div
+                    className="absolute inset-0 flex items-center justify-center transition-all duration-300"
+                    style={{
+                        background: imageHover ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0)',
+                        opacity: imageHover ? 1 : 0,
+                    }}
+                >
+                    <div
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-full text-white text-sm font-semibold backdrop-blur-sm transition-transform duration-300"
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            transform: imageHover ? 'translateY(0)' : 'translateY(8px)',
+                        }}
+                    >
+                        <Eye className="w-4 h-4" />
+                        View Details
+                    </div>
+                </div>
+
                 {/* Badges */}
                 <div className="absolute top-3 left-3 flex flex-col gap-2">
                     {isPromoted && (
@@ -112,7 +148,7 @@ export default function ListingCard({
                                 e.preventDefault()
                                 onAction(listing)
                             }}
-                            className="font-semibold transition-colors"
+                            className="font-semibold transition-colors hover:underline"
                             style={{ color: 'var(--brand-primary)' }}
                         >
                             {actionLabel}
@@ -125,7 +161,7 @@ export default function ListingCard({
 
     if (linkTo) {
         return (
-            <Link href={linkTo} className="block group h-full">
+            <Link href={linkTo} className="block h-full">
                 <CardContent />
             </Link>
         )

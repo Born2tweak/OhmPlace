@@ -1,31 +1,29 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ListingCard from '@/components/ListingCard'
 import { Search, Filter, X } from 'lucide-react'
+import { useToast } from '@/components/Toast'
 import type { Listing, ListingImage } from '@/types/database'
+import { CATEGORIES, CONDITIONS } from '@/types/database'
 
 interface ListingWithImages extends Listing {
     images: ListingImage[]
 }
 
-const CATEGORIES = [
-    'Textbooks',
-    'Electronics',
-    'Furniture',
-    'Clothing',
-    'School Supplies',
-    'Other'
-]
 
-const CONDITIONS = [
-    'New',
-    'Like New',
-    'Good',
-    'Fair',
-    'Poor'
-]
+
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState(value)
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedValue(value), delay)
+        return () => clearTimeout(timer)
+    }, [value, delay])
+
+    return debouncedValue
+}
 
 export default function MarketplacePage() {
     const [listings, setListings] = useState<ListingWithImages[]>([])
@@ -34,11 +32,72 @@ export default function MarketplacePage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('')
     const [selectedCondition, setSelectedCondition] = useState<string>('')
     const [showFilters, setShowFilters] = useState(false)
+    const { toast } = useToast()
+    const initialLoadDone = useRef(false)
+
+    const debouncedSearch = useDebounce(searchTerm, 300)
 
     const supabase = createClient()
 
+    const fetchListingImages = useCallback(async (listingId: string) => {
+        const { data: images } = await supabase
+            .from('listing_images')
+            .select('*')
+            .eq('listing_id', listingId)
+            .order('order', { ascending: true })
+        return images || []
+    }, [])
+
     useEffect(() => {
         fetchListings()
+
+        // Subscribe to real-time listing changes
+        const channel = supabase
+            .channel('marketplace-listings')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'listings',
+                filter: 'status=eq.available',
+            }, async (payload) => {
+                const newListing = payload.new as Listing
+                const images = await fetchListingImages(newListing.id)
+                const listingWithImages: ListingWithImages = { ...newListing, images }
+
+                setListings(prev => [listingWithImages, ...prev])
+
+                if (initialLoadDone.current) {
+                    toast(`New listing: ${newListing.title}`, 'info')
+                }
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'listings',
+            }, (payload) => {
+                const updated = payload.new as Listing
+                if (updated.status !== 'available') {
+                    // Remove sold/reserved listings
+                    setListings(prev => prev.filter(l => l.id !== updated.id))
+                } else {
+                    setListings(prev => prev.map(l =>
+                        l.id === updated.id ? { ...l, ...updated } : l
+                    ))
+                }
+            })
+            .on('postgres_changes', {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'listings',
+            }, (payload) => {
+                const deleted = payload.old as { id: string }
+                setListings(prev => prev.filter(l => l.id !== deleted.id))
+            })
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     const fetchListings = async () => {
@@ -58,27 +117,20 @@ export default function MarketplacePage() {
         if (listingsData) {
             const listingsWithImages = await Promise.all(
                 listingsData.map(async (listing) => {
-                    const { data: images } = await supabase
-                        .from('listing_images')
-                        .select('*')
-                        .eq('listing_id', listing.id)
-                        .order('order', { ascending: true })
-
-                    return {
-                        ...listing,
-                        images: images || []
-                    }
+                    const images = await fetchListingImages(listing.id)
+                    return { ...listing, images }
                 })
             )
             setListings(listingsWithImages)
         }
         setLoading(false)
+        initialLoadDone.current = true
     }
 
     const filteredListings = listings.filter(listing => {
         const matchesSearch =
-            listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            listing.description?.toLowerCase().includes(searchTerm.toLowerCase())
+            listing.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            listing.description?.toLowerCase().includes(debouncedSearch.toLowerCase())
 
         const matchesCategory = selectedCategory ? listing.category === selectedCategory : true
         const matchesCondition = selectedCondition ? listing.condition === selectedCondition : true
@@ -121,6 +173,15 @@ export default function MarketplacePage() {
                         }}
                     />
                     <Search className="absolute left-3 top-2.5 w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                    {searchTerm && (
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            className="absolute right-3 top-2.5 transition-colors hover:opacity-70"
+                            style={{ color: 'var(--text-muted)' }}
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -153,7 +214,7 @@ export default function MarketplacePage() {
                     <select
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="w-full md:w-48 p-2 rounded-lg text-sm focus:outline-none focus:ring-2"
+                        className="w-full md:w-48 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors"
                         style={{
                             border: '1px solid var(--border-subtle)',
                             background: 'var(--bg-card)',
@@ -169,7 +230,7 @@ export default function MarketplacePage() {
                     <select
                         value={selectedCondition}
                         onChange={(e) => setSelectedCondition(e.target.value)}
-                        className="w-full md:w-48 p-2 rounded-lg text-sm focus:outline-none focus:ring-2"
+                        className="w-full md:w-48 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors"
                         style={{
                             border: '1px solid var(--border-subtle)',
                             background: 'var(--bg-card)',
@@ -178,7 +239,7 @@ export default function MarketplacePage() {
                     >
                         <option value="">All Conditions</option>
                         {CONDITIONS.map(cond => (
-                            <option key={cond} value={cond}>{cond}</option>
+                            <option key={cond.value} value={cond.value}>{cond.label}</option>
                         ))}
                     </select>
 

@@ -26,7 +26,7 @@ export async function GET(
         return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
-    // Get comments
+    // Get comments (including parent_id for threading)
     const { data: comments } = await supabase
         .from('comments')
         .select('*')
@@ -56,13 +56,30 @@ export async function GET(
             commentVoteMap[v.comment_id] = v.vote
         })
     }
+    // Fetch avatars for post and all comments
+    const userIds = Array.from(new Set([
+        post.user_id as string,
+        ...(comments || []).map(c => c.user_id as string)
+    ]))
+
+    const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, avatar_url')
+        .in('id', userIds) as { data: { id: string; avatar_url: string | null }[] | null }
+
+    const avatarMap: Record<string, string | null> = {}
+    profiles?.forEach((p) => {
+        avatarMap[p.id] = p.avatar_url
+    })
 
     return NextResponse.json({
         ...post,
         userVote: postVote?.vote || 0,
+        avatar_url: avatarMap[post.user_id as string] || null,
         comments: (comments || []).map((c) => ({
             ...c,
-            userVote: commentVoteMap[c.id as string] || 0
+            userVote: commentVoteMap[c.id as string] || 0,
+            avatar_url: avatarMap[c.user_id as string] || null
         }))
     })
 }

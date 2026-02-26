@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { clerkClient } from '@clerk/nextjs/server'
 import { auth } from '@clerk/nextjs/server'
+import { getSupabase } from '@/lib/supabase/server'
 
 export async function GET(
     request: NextRequest,
@@ -17,11 +18,14 @@ export async function GET(
         const client = await clerkClient()
         const user = await client.users.getUser(id)
 
+        const supabase = getSupabase()
+        const { data: profile } = await supabase.from('profiles').select('avatar_url').eq('id', id).maybeSingle() as { data: { avatar_url: string | null } | null }
+
         return NextResponse.json({
             id: user.id,
             email: user.primaryEmailAddress?.emailAddress,
             full_name: user.fullName,
-            avatar_url: user.imageUrl,
+            avatar_url: profile?.avatar_url || user.imageUrl,
         })
     } catch (error) {
         console.error('Error fetching user from Clerk:', error)

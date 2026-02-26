@@ -7,6 +7,7 @@ import { ArrowLeft, MessageSquare, Share2, Trash2, Loader2 } from 'lucide-react'
 import VoteButton from '@/components/community/VoteButton'
 import FlairBadge from '@/components/community/FlairBadge'
 import CommentSection from '@/components/community/CommentSection'
+import { useToast } from '@/components/Toast'
 
 interface Comment {
     id: string
@@ -17,6 +18,8 @@ interface Comment {
     downvotes: number
     created_at: string
     userVote: number
+    parent_id: string | null
+    avatar_url?: string | null
 }
 
 interface PostDetail {
@@ -32,6 +35,7 @@ interface PostDetail {
     comment_count: number
     created_at: string
     userVote: number
+    avatar_url?: string | null
     comments: Comment[]
 }
 
@@ -48,12 +52,17 @@ function timeAgo(dateStr: string): string {
     return `${months}mo ago`
 }
 
+function getInitials(name: string): string {
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+}
+
 export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
     const { user } = useUser()
     const router = useRouter()
     const [post, setPost] = useState<PostDetail | null>(null)
     const [loading, setLoading] = useState(true)
+    const { toast } = useToast()
 
     const fetchPost = useCallback(async () => {
         try {
@@ -124,11 +133,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         })
     }
 
-    const handleAddComment = async (body: string) => {
+    const handleAddComment = async (body: string, parentId?: string) => {
         const res = await fetch(`/api/community/posts/${id}/comments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ body })
+            body: JSON.stringify({ body, parent_id: parentId || null })
         })
 
         if (res.ok && post) {
@@ -151,6 +160,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href)
+        toast('Link copied!', 'success')
     }
 
     if (loading) {
@@ -196,6 +206,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
                 {/* Header */}
                 <div className="flex items-center gap-2 text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                    {post.avatar_url ? (
+                        <img src={post.avatar_url} alt="avatar" className="w-6 h-6 rounded-full object-cover shrink-0 ring-1 ring-[var(--border-subtle)]" />
+                    ) : (
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                            style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))' }}>
+                            {getInitials(post.username)}
+                        </div>
+                    )}
                     <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{post.username}</span>
                     <span>·</span>
                     <span>{timeAgo(post.created_at)}</span>
@@ -243,8 +261,10 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                     {isOwner && (
                         <button
                             onClick={handleDelete}
-                            className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors ml-auto"
+                            className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full transition-colors ml-auto"
                             style={{ color: 'var(--text-muted)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'color-mix(in srgb, #ef4444 10%, transparent)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
                         >
                             <Trash2 className="w-4 h-4" />
                             Delete
@@ -259,6 +279,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 <CommentSection
                     comments={post.comments}
                     currentUserId={user?.id || ''}
+                    postAuthorId={post.user_id}
                     onAddComment={handleAddComment}
                     onVoteComment={handleCommentVote}
                 />

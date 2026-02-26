@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Truck, Loader2 } from 'lucide-react'
 import type { Listing, ListingImage } from '@/types/database'
+import { useToast } from '@/components/Toast'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
     const [loading, setLoading] = useState(true)
     const [selectedImageIndex, setSelectedImageIndex] = useState(0)
     const [messaging, setMessaging] = useState(false)
+    const { toast } = useToast()
 
     useEffect(() => {
         const fetchListing = async () => {
@@ -266,7 +268,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                             <button
                                 onClick={() => {
                                     navigator.clipboard.writeText(window.location.href)
-                                    alert('Link copied to clipboard!')
+                                    toast('Link copied to clipboard!', 'success')
                                 }}
                                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all border border-transparent hover:border-current"
                                 style={{ background: 'var(--bg-lighter)', color: 'var(--text-primary)' }}
@@ -277,14 +279,14 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                         </div>
 
                         {/* Seller Safety Tip */}
-                        <div className="mt-8 p-4 rounded-lg bg-blue-50/50" style={{ border: '1px solid var(--border-subtle)' }}>
+                        <div className="mt-8 p-4 rounded-lg" style={{ background: 'color-mix(in srgb, var(--brand-primary) 8%, transparent)', border: '1px solid var(--border-subtle)' }}>
                             <div className="flex gap-3">
-                                <div className="p-2 rounded-full bg-blue-100 flex-shrink-0 h-fit">
-                                    <ShieldCheck className="w-4 h-4 text-blue-600" />
+                                <div className="p-2 rounded-full flex-shrink-0 h-fit" style={{ background: 'color-mix(in srgb, var(--brand-primary) 15%, transparent)' }}>
+                                    <ShieldCheck className="w-4 h-4" style={{ color: 'var(--brand-primary)' }} />
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-sm text-blue-900 mb-1">Safe Trading</h4>
-                                    <p className="text-xs text-blue-700 leading-relaxed">
+                                    <h4 className="font-bold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>Safe Trading</h4>
+                                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                                         Always meet in a public, well-lit place on campus. Checking the item before paying is recommended.
                                     </p>
                                 </div>

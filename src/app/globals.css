@@ -210,6 +210,50 @@ body {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  }
+}
+
+@keyframes progressShrink {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.4s ease-out forwards;
 }
@@ -236,6 +280,24 @@ body {
 
 .stagger-6 {
   animation-delay: 0.3s;
+}
+
+/* ── Interactive Utilities ────────────────────── */
+.hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--shadow-hover);
+}
+
+.hover-lift:active {
+  transform: translateY(-1px) scale(1.005);
+}
+
+.promoted-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
 }
 
 .skeleton {

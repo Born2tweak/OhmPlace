@@ -25,9 +25,9 @@ export default function QuickActionCard() {
                     </div>
                 </Link>
 
-                <button
-                    disabled
-                    className="flex items-center gap-3 w-full p-3 rounded-lg transition-all group opacity-75 cursor-not-allowed"
+                <Link
+                    href="/dashboard/community"
+                    className="flex items-center gap-3 w-full p-3 rounded-lg transition-all group"
                     style={{ border: '1px solid var(--border-subtle)' }}
                 >
                     <div className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
@@ -36,9 +36,9 @@ export default function QuickActionCard() {
                     </div>
                     <div className="text-left">
                         <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>Request a Part</div>
-                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Ask the community (Coming Soon)</div>
+                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Ask the community for help</div>
                     </div>
-                </button>
+                </Link>
             </div>
         </div>
     )

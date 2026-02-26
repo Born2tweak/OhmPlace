@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Settings, LogOut, ShoppingBag, LayoutDashboard, Store, Users, MessageSquare, Sun, Moon } from 'lucide-react'
 import { useClerk } from '@clerk/nextjs'
 import { useTheme } from '@/components/ThemeProvider'
+import { ToastProvider } from '@/components/Toast'
 
 export default function DashboardLayout({
     children
@@ -16,7 +17,8 @@ export default function DashboardLayout({
     const { user } = useUser()
     const { signOut } = useClerk()
     const pathname = usePathname()
-    const { theme, toggleTheme } = useTheme()
+    const { theme, setTheme } = useTheme()
+    const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
 
     // Sync profile to Supabase on load
     useEffect(() => {
@@ -26,13 +28,18 @@ export default function DashboardLayout({
             const { createClient } = await import('@/lib/supabase/client')
             const supabase = createClient()
 
+            const { data: existing } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+            const finalAvatarUrl = existing?.avatar_url || user.imageUrl
+
             await supabase.from('profiles').upsert({
                 id: user.id,
                 email: user.primaryEmailAddress?.emailAddress,
                 full_name: user.fullName,
-                avatar_url: user.imageUrl,
+                avatar_url: finalAvatarUrl,
                 updated_at: new Date().toISOString()
             })
+
+            setProfileAvatar(finalAvatarUrl)
         }
 
         syncProfile()
@@ -82,7 +89,7 @@ export default function DashboardLayout({
                         </Link>
                         <div className="flex items-center gap-3">
                             <button
-                                onClick={toggleTheme}
+                                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                                 className="p-2 rounded-xl transition-all hover:scale-105"
                                 style={{
                                     color: 'var(--text-secondary)',
@@ -92,9 +99,18 @@ export default function DashboardLayout({
                             >
                                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                             </button>
-                            <span className="text-sm font-medium hidden sm:inline" style={{ color: 'var(--text-secondary)' }}>
-                                {user?.primaryEmailAddress?.emailAddress}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                {profileAvatar ? (
+                                    <img src={profileAvatar} alt="Profile" className="w-7 h-7 rounded-full object-cover hidden sm:block" />
+                                ) : (
+                                    <div className="w-7 h-7 rounded-full hidden sm:flex items-center justify-center text-white text-[10px] font-bold" style={{ background: 'var(--brand-primary)' }}>
+                                        {user?.primaryEmailAddress?.emailAddress?.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <span className="text-sm font-medium hidden md:inline truncate max-w-[150px]" style={{ color: 'var(--text-secondary)' }}>
+                                    {user?.primaryEmailAddress?.emailAddress}
+                                </span>
+                            </div>
                             <button
                                 onClick={() => signOut()}
                                 className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02]"
@@ -145,7 +161,9 @@ export default function DashboardLayout({
                     </aside>
 
                     {/* Main Content */}
-                    <main className="lg:col-span-3">{children}</main>
+                    <main className="lg:col-span-3">
+                        <ToastProvider>{children}</ToastProvider>
+                    </main>
                 </div>
             </div>
         </div>
