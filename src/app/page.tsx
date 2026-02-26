@@ -11,7 +11,7 @@ export default function Home() {
     const { signOut } = useClerk()
     const [eduError, setEduError] = useState(false)
     const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
-    const { theme, toggleTheme } = useTheme()
+    const { theme, setTheme } = useTheme()
 
     useEffect(() => {
         if (isSignedIn && user?.primaryEmailAddress?.emailAddress) {
@@ -47,7 +47,7 @@ export default function Home() {
 
                         <div className="flex items-center gap-4">
                             <button
-                                onClick={toggleTheme}
+                                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                                 className="p-2 rounded-lg transition-colors hover:opacity-80"
                                 style={{ color: 'var(--text-secondary)' }}
                                 aria-label="Toggle theme"
