@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Truck, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Truck, Loader2, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import type { Listing, ListingImage } from '@/types/database'
 import { useToast } from '@/components/Toast'
 
@@ -27,6 +27,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
     const [loading, setLoading] = useState(true)
     const [selectedImageIndex, setSelectedImageIndex] = useState(0)
     const [messaging, setMessaging] = useState(false)
+    const [deleting, setDeleting] = useState(false)
     const { toast } = useToast()
 
     useEffect(() => {
@@ -264,8 +265,8 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                                         key={idx}
                                         onClick={() => setSelectedImageIndex(idx)}
                                         className={`h-1.5 rounded-full transition-all duration-300 ${selectedImageIndex === idx
-                                                ? 'w-5 bg-[var(--brand-primary)]'
-                                                : 'w-1.5 bg-[var(--border-subtle)] hover:bg-[var(--text-muted)]'
+                                            ? 'w-5 bg-[var(--brand-primary)]'
+                                            : 'w-1.5 bg-[var(--border-subtle)] hover:bg-[var(--text-muted)]'
                                             }`}
                                     />
                                 ))}
@@ -339,6 +340,37 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                                 <Share2 className="w-5 h-5" />
                                 Share Listing
                             </button>
+                            {user?.id === listing.user_id && (
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('Are you sure you want to delete this listing? This cannot be undone.')) return
+                                        setDeleting(true)
+                                        const supabase = createClient()
+                                        try {
+                                            await supabase.from('listing_images').delete().eq('listing_id', listing.id)
+                                            await supabase.from('listings').delete().eq('id', listing.id)
+                                            toast('Listing deleted', 'success')
+                                            router.push('/dashboard/my-listings')
+                                        } catch (err) {
+                                            console.error('Error deleting listing:', err)
+                                            toast('Failed to delete listing', 'error')
+                                            setDeleting(false)
+                                        }
+                                    }}
+                                    disabled={deleting}
+                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)' }}
+                                >
+                                    {deleting ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Trash2 className="w-5 h-5" />
+                                            Delete Listing
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
 
                         {/* Seller Safety Tip */}

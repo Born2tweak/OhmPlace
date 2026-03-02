@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Listing, ListingImage } from '@/types/database'
 import ListingCard from '@/components/ListingCard'
 import BoostModal from '@/components/BoostModal'
-import { Zap } from 'lucide-react'
+import { Zap, Trash2, Loader2 } from 'lucide-react'
 
 interface ListingWithImages extends Listing {
     images: ListingImage[]
@@ -25,6 +25,7 @@ function MyListingsContent() {
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<FilterTab>('all')
     const [updatingId, setUpdatingId] = useState<string | null>(null)
+    const [deletingId, setDeletingId] = useState<string | null>(null)
     const [boostListingId, setBoostListingId] = useState<string | null>(null)
     const [showBoostedBanner, setShowBoostedBanner] = useState(false)
 
@@ -77,7 +78,7 @@ function MyListingsContent() {
         setLoading(false)
     }
 
-    const markAsCompleted = async (listingId: string) => {
+    const markAsSold = async (listingId: string) => {
         setUpdatingId(listingId)
         const supabase = createClient()
 
@@ -97,6 +98,38 @@ function MyListingsContent() {
             alert('Failed to mark as sold')
         } finally {
             setUpdatingId(null)
+        }
+    }
+
+    const deleteListing = async (listingId: string) => {
+        if (!confirm('Are you sure you want to delete this listing? This cannot be undone.')) return
+
+        setDeletingId(listingId)
+        const supabase = createClient()
+
+        try {
+            // Delete images first (foreign key)
+            const { error: imgError } = await supabase
+                .from('listing_images')
+                .delete()
+                .eq('listing_id', listingId)
+
+            if (imgError) throw imgError
+
+            // Delete the listing
+            const { error } = await supabase
+                .from('listings')
+                .delete()
+                .eq('id', listingId)
+
+            if (error) throw error
+
+            setListings(listings.filter(l => l.id !== listingId))
+        } catch (error) {
+            console.error('Error deleting listing:', error)
+            alert('Failed to delete listing')
+        } finally {
+            setDeletingId(null)
         }
     }
 
@@ -179,38 +212,57 @@ function MyListingsContent() {
                     <p style={{ color: 'var(--text-muted)' }}>No listings in this category</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {filteredListings.map((listing) => (
-                        <div key={listing.id} className="relative">
+                        <div key={listing.id} className="relative flex flex-col">
                             <ListingCard
                                 listing={listing}
                                 actionLabel={listing.status === 'available' ? 'Mark Sold' : undefined}
-                                onAction={listing.status === 'available' ? (l) => markAsCompleted(l.id) : undefined}
+                                onAction={listing.status === 'available' ? (l) => markAsSold(l.id) : undefined}
                             />
-                            {listing.status === 'available' && (
-                                <div className="mt-2">
-                                    {isPromoted(listing) ? (
-                                        <div className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg"
-                                            style={{ background: 'color-mix(in srgb, #F59E0B 15%, transparent)', color: '#D97706' }}>
-                                            <Zap className="w-3.5 h-3.5" />
-                                            Boosted until {new Date(listing.promoted_until!).toLocaleDateString()}
-                                        </div>
+                            <div className="mt-3 flex gap-2">
+                                {listing.status === 'available' && (
+                                    <div className="flex-1">
+                                        {isPromoted(listing) ? (
+                                            <div className="flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-2.5 rounded-xl"
+                                                style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#fff' }}>
+                                                <Zap className="w-3.5 h-3.5" />
+                                                Boosted until {new Date(listing.promoted_until!).toLocaleDateString()}
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setBoostListingId(listing.id)}
+                                                className="w-full flex items-center justify-center gap-1.5 text-sm font-bold px-3 py-2.5 rounded-xl transition-all hover:shadow-md"
+                                                style={{
+                                                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                                                    color: '#fff',
+                                                }}
+                                            >
+                                                <Zap className="w-4 h-4" />
+                                                Boost Listing
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => deleteListing(listing.id)}
+                                    disabled={deletingId === listing.id}
+                                    className="flex items-center justify-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all hover:shadow-md"
+                                    style={{
+                                        background: 'rgba(239,68,68,0.1)',
+                                        color: '#EF4444',
+                                        border: '1px solid rgba(239,68,68,0.3)',
+                                    }}
+                                    title="Delete listing"
+                                >
+                                    {deletingId === listing.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
                                     ) : (
-                                        <button
-                                            onClick={() => setBoostListingId(listing.id)}
-                                            className="w-full flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
-                                            style={{
-                                                border: '1px dashed var(--border-subtle)',
-                                                color: 'var(--brand-primary)',
-                                                background: 'transparent',
-                                            }}
-                                        >
-                                            <Zap className="w-4 h-4" />
-                                            Boost This Listing
-                                        </button>
+                                        <Trash2 className="w-4 h-4" />
                                     )}
-                                </div>
-                            )}
+                                    Delete
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
