@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, Suspense } from 'react'
+import { useState, useRef, useEffect, useMemo, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -48,7 +48,7 @@ function MessagesContent() {
     const { user, isLoaded } = useUser()
     const searchParams = useSearchParams()
     const router = useRouter()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
     const { toast } = useToast()
 
     // State
@@ -110,9 +110,9 @@ function MessagesContent() {
 
                 setConversations(enriched as any)
 
-                // 4. Fallback: Fetch missing profiles from API
+                // 4. Fallback: Fetch missing profiles or avatars from API
                 const missingIds = enriched
-                    .filter(c => !c.other_user.full_name)
+                    .filter(c => !c.other_user.full_name || !c.other_user.avatar_url)
                     .map(c => c.other_user.id)
 
                 if (missingIds.length > 0) {
@@ -175,7 +175,9 @@ function MessagesContent() {
                 table: 'conversations',
                 filter: `participant_2=eq.${user.id}`
             }, () => fetchConversations())
-            .subscribe()
+            .subscribe((status) => {
+                console.log('[Realtime] conversations channel:', status)
+            })
 
         return () => {
             supabase.removeChannel(channel)
@@ -212,9 +214,12 @@ function MessagesContent() {
                 table: 'messages',
                 filter: `conversation_id=eq.${selectedConvoId}`
             }, (payload) => {
+                console.log('[Realtime] new message received:', payload.new)
                 setMessages(prev => [...prev, payload.new as Message])
             })
-            .subscribe()
+            .subscribe((status) => {
+                console.log('[Realtime] messages channel:', status)
+            })
 
         return () => {
             supabase.removeChannel(channel)
@@ -411,10 +416,14 @@ function MessagesContent() {
                                                 borderLeftColor: selectedConvoId === convo.id ? 'var(--brand-primary)' : 'transparent',
                                             }}
                                         >
-                                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                                                style={{ background: 'var(--brand-primary)' }}>
-                                                {convo.other_user?.full_name?.charAt(0) || '?'}
-                                            </div>
+                                            {convo.other_user?.avatar_url ? (
+                                                <img src={convo.other_user.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                                                    style={{ background: 'var(--brand-primary)' }}>
+                                                    {convo.other_user?.full_name?.charAt(0) || '?'}
+                                                </div>
+                                            )}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
                                                     <span className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
@@ -451,10 +460,14 @@ function MessagesContent() {
                             >
                                 <ArrowLeft className="w-5 h-5" />
                             </button>
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-                                style={{ background: 'var(--brand-primary)' }}>
-                                {selectedConvo.other_user?.full_name?.charAt(0) || '?'}
-                            </div>
+                            {selectedConvo.other_user?.avatar_url ? (
+                                <img src={selectedConvo.other_user.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
+                            ) : (
+                                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                                    style={{ background: 'var(--brand-primary)' }}>
+                                    {selectedConvo.other_user?.full_name?.charAt(0) || '?'}
+                                </div>
+                            )}
                             <div>
                                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                                     {selectedConvo.other_user?.full_name || `User ${selectedConvo.other_user?.id.slice(0, 4)}`}
