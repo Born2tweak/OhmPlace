@@ -85,8 +85,8 @@ export default function NewListingPage() {
     }
 
     return (
-        <div className="rounded-lg shadow-md p-8" style={{ background: 'var(--bg-card)' }}>
-            <h1 className="text-3xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>Create New Listing</h1>
+        <div className="rounded-lg shadow-md p-4 sm:p-8" style={{ background: 'var(--bg-card)' }}>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>Create New Listing</h1>
 
             {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

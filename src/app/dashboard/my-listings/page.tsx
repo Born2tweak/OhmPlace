@@ -135,16 +135,16 @@ function MyListingsContent() {
             )}
 
             {/* Page Header */}
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>My Listings</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>My Listings</h1>
                     <p style={{ color: 'var(--text-muted)' }}>
                         {activeCount} active, {completedCount} sold
                     </p>
                 </div>
                 <Link
                     href="/dashboard/new-listing"
-                    className="text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                    className="w-full sm:w-auto text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                     style={{ background: 'var(--brand-primary)' }}
                 >
                     <span className="text-xl">+</span> Post a Part

@@ -1,0 +1,74 @@
+Lab 2: Wireless Router
+Overview: In this lab project, you will learn how to configure switches and routers in wireless environment.
+Specifically, you will learn how to apply Virtual Local Area Network (VLAN), Dynamic Host Configuration
+Protocol (DHCP), Port forwarding, Secure Shell (SSH), and Network Address Translation (NAT) in practice.
+
+Network Diagram
+Deploy the following architecture where XX is your Laboratory Group #.
+
+Figure 1 – Network Architecture for Lab 2
+
+Primary Objectives
+•
+•
+•
+•
+
+Install VyOS on mini passive-cooled pc with 6 ethernet ports and wireless networking. Use USB purchased
+for class (mentioned in lecture).
+Connect to the console port of the VyOS device serially with the speed of 115200 (or 9600 depending on the
+device model) using PuTTY or SecureCRT.
+The VyOS wireless router should set to a static Wide Area Network (WAN) interface of 44.34.XX.254 on
+one of the Ethernet interfaces, with a default gateway of 44.34.XX.1 and subnet mask of 255.255.255.0
+Configure Wireless network on VyOS machine including:
+o Minimal Wireless Interface configuration.
+▪ Internet Protocol (IP) address 172.16.XX.1 /24.
+▪ description – “CNIT 344 Group XX Wireless Network”.
+▪ wireless channel.
+▪ wireless mode.
+▪ wireless type – access point.
+▪ wireless Service Set Identifier (SSID) – “gXXc344”.
+▪ wireless security mode and password.
+▪ wireless country code.
+Page 1 of 2
+
+Configure DHCP for the wireless network including.
+▪ Default router.
+▪ DNS services.
+▪ Range of addresses from 172.16.XX.100 to 172.16.XX.200.
+o NAT to leave the private wireless network
+Configure the management interface for VyOS (44.34.XX.254) so the device can be accessed remotely using
+SSH through the Computer and Information Technology Virtual Private Network (CIT VPN).
+Configure both Cisco 3750s and the HP/Aruba so each can be reached remotely using SSH from within the
+10.1.XX.0 /24 network. Create an alternate method to attach to the 3 switches without using the serial cables
+from within your private network.
+Local Area Network (LAN) interface on an Ethernet interface of VyOS device with DHCP service enabled.
+The range of the IP addresses will be *.*.*.100 to *.*.*.200 to serve VLAN XX1 network at 10.1.XX.0 /24,
+VLAN XX2 (sub interface or virtual interface) network at 10.2.XX.0 /24, and VLAN XX3 (sub interface or
+virtual interface) network at 10.3.XX.0 /24 where XX is your group number.
+NAT will need to be used for all networks inside the private network. NAT will permit the traffic outside on
+the WAN port.
+Configure VLANs on the VyOS device and 3 switches such that PCs will automatically join different VLANs
+and based on the port they connect to and have Internet access.
+Port forwarding.
+o Put PC1 in VLAN XX1 and install Internet Information Services (IIS) web server on PC1.
+o Verify the web server is accessible when PC2 is on VLAN XX1, VLAN XX2, and VLAN XX3.
+o Configure port forwarding such that your web server is accessible for any PCs in the CIT-VPN.
+Disable the Wireless Access Point to reduce WiFi interferences in Knoy during check-off. Do NOT delete the
+wireless interface.
+o
+
+•
+•
+
+•
+
+•
+•
+•
+
+•
+
+Page 2 of 2
+
+

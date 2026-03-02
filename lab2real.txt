@@ -1,0 +1,833 @@
+ECET 27000 Lab #2 & 3 – ATmega328 Project
+
+Objectives:
+
+
+
+
+
+
+
+
+
+
+Be able to implement a microcontroller without a development board
+Build a microcontroller circuit on a soldered protoboard
+Learn to program a microcontroller without a BootLoader
+Learn how to utilize the Arduino IDE examples to create an ISP
+Learn to program a microcontroller with AVRDUDE
+Learn to integrate an ISP into AVR Studio
+Learn to integrate an ISP into the Arduino IDE
+Test a microcontroller system for proper operation
+Document the test results of a microcontroller system
+
+PRELAB
+ Read the first 4 pages of this document before coming to lab!
+ In addition to your ECET 27000 parts kit, you need to bring your
+ATmega2560 microcontroller, some male to female cables, a USB
+cable, and a solderless protoboard with you to lab
+
+In order to receive credit for this laboratory activity, you must
+properly document your efforts in your logbook.
+
+1
+
+Assignment Overview:
+The goal of this assignment is to design, build, and test a small microcontroller
+development board using a point-to-point protoboard. To this end, you will be creating a
+simple ATmega328 microcontroller development board similar to the one shown below.
+Your board will be like an Arduino Uno but will not include a USB connection or a crystal
+oscillator.
+For this simplified design, you will need the microcontroller (28 PDIP), two 6-pin
+headers for Port B and C respectfully, an 8-pin header for Port D, a 2-pin header for
++5V and ground, an appropriate header for AVCC power, the class standard 6-pin AVR
+ISP header, and an appropriate reset button.
+The design should include two bypass capacitors across the power pins (VCC and
+AVCC) and a pull-up resistor on the reset line of the microcontroller. The simplified
+version will operate using the internal RC oscillator. You may want to consult the Atmel
+application note AVR042: AVR Hardware Design Considerations in addition to your
+class notes to help you design the circuit.
+
+Building the actual board:
+The simplified Arduino UNO board will ultimately be constructed using the small halfsized solder board located in your parts kit. You will absolutely want to use a DIP
+socket for your project (you solder the socket to your board and then you will put the
+microcontroller in the socket). The socket and ATmega328 should be in your parts kit.
+You should have the headers required to complete this assignment in your current and
+previous parts kits. You should also have a reset button and the required capacitors to
+complete the circuit as well, but if not, you should be able to obtain them from the EE
+parts store.
+2
+
+Planning the board:
+One of the first things you need to do is to plan out the board before you start to
+construct it. You should be able to place some of the headers into the protoboard so
+that you don’t need jumper wires, but this will not work for all of them. Do your best to
+minimize the number of jumpers as it will help to simplify the process of building the
+board and make a much cleaner design, not mention it is faster to build.
+Use this image of the protoboard, or another image if preferred, to plan your layout.
+Make sure you DOCUMENT THIS IN YOUR LOGBOOK!!
+
+Testing:
+You will need to execute a testing strategy to prove that your board is operational once
+built. This will ensure that the IO ports are operational – both input and output, that you
+can send and receive serial data through the UART, that you can perform ADC
+operations with the board through multiple channels, and that the PWM outputs work
+properly.
+The testing will be accomplished using very small, dedicated test programs. You should
+NOT attempt to do all of this testing with one program. Acceptable test programs for all
+of these functions were developed during ECET 17900 and can be reused here so you
+should not have to create these test programs from scratch. You will need to identify
+the appropriate programs and how to use them. If you cannot find these programs, they
+can be reproduced fairly easily. They will also need to be re-compiled for the 328 as
+well.
+Very specific details with respect to testing this project will be presented during lecture
+and are included at the end of this document!
+3
+
+Placing Code into the Microcontroller/Downloading Code:
+Transferring your code into the microcontroller is going to be one of the biggest
+challenges with this project. This is also one of the biggest learning objectives for this
+activity as well.
+When you start with a new microcontroller, there is no bootloader for you to utilize, not
+to mention the fact that we won’t have a USB connection. You will not be able to simply
+plug in a cable and download your code. You will need to go through a few additional
+steps.
+In order to place programs into a new microcontroller, you will need this thing called an
+In-System Programmer, or ISP for short. An ISP is actually just a microcontroller that
+has been programmed to transfer code into another microcontroller. The preferred
+option for obtaining an ISP in this course is to simply turn an existing Arduino board like
+your ATmega2560 into the required ISP. An Arduino Uno board would also work.
+The Arduino IDE has an ISP Example included with it. This example will be utilized to
+transfer code into the ATmega328 that you build for this project. Once ready, you will
+open the example in the Arduino IDE, make a few minor changes to the example code,
+compile the code and download it into your ATmega2560. Then, you will connect the
+ATmega328 microcontroller that you build to the output pins of the ATmega2560 and
+initiate the programming sequence on your computer. The specific details of how to
+accomplish this are presented in this document.
+The first step:
+The first thing we need to do is to verify that your ATmega328 microcontroller is “good”
+and that you can communicate with it through an ISP. To accomplish this goal, we are
+going to place the ATmega328 into a “regular” solderless protoboard. Then, we are
+going to “create” the ISP that we need and then utilize the ISP to read what is known as
+the device ID of the target ATmega328.
+To get started, you will want to “roll” the legs of the ATmega328 so that they are
+perpendicular to the body of the microcontroller so that they will actually plug into the
+breadboard. You can do this by hand or with a pair of pliers as shown below.
+
+4
+
+Once the legs have been adjusted, simply place the ATmega328 into the breadboard.
+MAKE CERTAIN that you do NOT bend any of the legs under the IC as you do this!
+Creating the ISP
+To create the required ISP, you need to plug your ATmega2560 microcontroller into an
+open USB port on a computer and then open the Arduino IDE. Once you have the
+Arduino IDE running, open the ArduinoISP example, and select the appropriate
+processor, com port, etc. from the pulldown menus.
+
+Once you have the ISP example open, you will need to scroll down and find the settings
+shown in the image on the next page. These are the default pins on the ATmega2560
+that would be utilized to communicate with the target ATmega328. While perfectly
+acceptable, it might be better to move these connections to an alternate location.
+
+5
+
+Make the following changes to the code shown above:
+
+
+First, change “#define RESET
+
+
+
+Then, uncomment the line that says “// #define USE_OLD_STYLE_WIRING”
+by deleting the “//” at the beginning of the line
+
+
+
+Then, change “#define PIN_MOSI
+
+11” to “#define PIN_MOSI
+
+51”
+
+
+
+Next, change “#define PIN_MISO
+
+12” to “#define PIN_MISO
+
+50”
+
+
+
+And last, change “#define PIN_SCK 13” to “#define PIN_SCK
+
+52”
+
+10” to “#define RESET
+
+53”
+
+With those changes made, compile and download the code into your ATmega2560 like
+you would any other Arduino Sketch.
+
+6
+
+Now, connect your ATmega2560 to your target ATmega328 by following the
+connections in the table below:
+ISP ATmega2560
+
+Target ATmega328
+
+Pin 53
+Pin 51
+Pin 50
+Pin 52
+
+to
+to
+to
+to
+
+The Reset Line (Pin 1)
+The MOSI Line (Pin 17)
+The MISO Line (Pin 18)
+The SCK Line (Pin 19)
+
++5V
+GND
+
+to
+to
+
+VCC (Pin 7)
+GND (Pin 8)
+
+When finished, you should have something that looks like this:
+
+At this point, you are now ready to attempt to communicate with your target
+ATmega328.
+
+7
+
+There are multiple ways to utilize the ISP to communicate with and to program a target
+microcontroller like your ATmega328. The first one we are going to utilize is a
+“command line prompt” interface to control the AVRDude application.
+Using AVRDude
+AVRDude is the application that runs on your computer and interfaces with the ISP
+programmer. You have probably used ARVDude a number or times without every
+knowing it. ARVDude is the application that runs on your computer and is responsible to
+downloading your code from the Arduino IDE into your microcontroller when you select
+the “Download” command. AVRDude is also the program that runs behind the scenes
+when you utilized the downloading GUI in ECET 17900. In both cases, the details of
+invoking the downloading process were hidden from you. Now we are going to expose
+the process, and look at the details.
+One of the biggest challenges with using AVRDude is that it is a command line prompt
+driven application. The Arduino IDE and the ECET 17900 GUI both automatically create
+the command line prompt instructions for you, so you didn’t have to do it yourself.
+However, for this activity, you will have to do it yourself, but don’t worry, I will walk you
+through the entire process.
+Using a command line prompt may be new to a lot of you. The following is meant to
+help guide you through the process, but it is not designed to be a complete guide to
+everything there is to know about command line prompts and the AVRDude application.
+If you want to learn more and explore more, feel free to search the Internet for additional
+information.
+You can enter a command prompt in several different ways, and depending on the
+operating system (Windows 10 vs Windows 11), you have to do things slightly different.
+Before we launch the command line interface, we should do some setup first. The first
+thing you need is the AVRDude application on your computer and in a known location.
+You should already have this from ECET 17900 (this is included in the MEGA
+Downloader ZIP file that we used in 17900 to download programs). I think it is better to
+make a copy of the AVRDude program into an ECET 27000 folder, but that is ultimately
+up to you.
+In my case, I have a directory called “Testing” in My Documents, under an ECET 27000
+folder as shown in the next image. I took the Uploader/Downloader folder from ECET
+17900 and just copied the entire contents into an “AVRDude” subfolder. Now, if you look
+closely, you will see some extra Hex files in this directory that won’t be in yours. I’ll
+discuss what these are and where they came from later in this document.
+
+8
+
+To enter into the command window when using Windows 10, select the entire path at
+the top of the window and type “cmd” as shown in the images on the next page. This
+should launch a command line prompt window in this specific location on the computer.
+If you are using Windows 11, the process is slightly different. With Windows 11, you
+need to right-click in the window and select “Open in Windows Terminal”.
+Doing either of these should open a command prompt that is already located in that
+exact folder. Your folder structure will determine the exact path that shows up, but it
+should look something like the image shown below:
+
+9
+
+My test
+files
+
+To enter the command prompt when using Windows 10, select this entire path and
+then replace it with “cmd” and press enter.
+
+The benefit to opening the command prompt in this folder is that you can type AVRDude
+commands and download the hex files that have been placed in this folder without the
+need to change directories or do any other DOS directory commands.
+Establishing Communication with the Target
+The very first “thing” that you need to do is to verify that you can communicate with your
+target ATmega328 and that your target ATmega328 is responding appropriately.
+Establishing communication is critical as nothing else can happen if you can’t
+communicate with the target. This will also verify that your programmer is working and
+10
+
+that you have the connections between the programmer and the target correct. You
+could do this step every time you connect your ISP programmer to your target, but you
+probably don’t need to. However, if for some reason you’re having problems
+programming your target, then running these commands may help you troubleshoot.
+To establish communication with the target, you will need to type a command similar to
+this one:
+
+c:\>avrdude -P COM12 -b 19200 -c avrisp -p m328p –n
+In this example, the ISP programmer (Arduino 2560) is COM 12, thus “-P COM12”. You
+will need to use the comm port of your Arduino ISP board (this is your ATmega2560).
+The “m328p” is the designation for the target ATmega328p microcontroller.
+Typing the command from above directly into the terminal window should produce
+similar results to those shown below.
+
+The key result is that the Device signature is a value similar to that shown above.
+Two important notes: 1 – the Arduino I’m using as my ISP Programmer is COM 22 and
+I’m actually using an ATmega8 in this example instead of an ATmega328. You will see
+those reflected in the actual command string that I used (“COM22” and “m8” instead of
+“m328p”). Be certain to utilize the COM port for your board and “m328p”.
+There are typically three responses that one gets from the previous command. You will
+either get a “true” device signature (something like 0x1e9307 as shown), or you will get
+0x000000 or 0xffffff. If you get 0x000000 or 0xffffff then there is more than likely a
+problem with your hardware – the connections between programmer and target are not
+correct. Or, in rare cases, there is a problem with your actual ATmega328.
+If you do not get a valid device ID response, you need to try a couple of different things
+to see if the problem is with your target ATmega328 or your ISP Programmer. The first
+step is to examine the connections between the ISP and the target microcontroller very
+closely and ensure they are wired properly. If you find an issue, correct it, and try again.
+11
+
+If that doesn’t solve your issue, see if you have a classmate that was successful, and
+then attempt to utilize their ISP 2560 to communicate with your target 328 to see if there
+is something wrong with your ISP. If you can read the device ID with their ISP, then
+there is something wrong with your ISP and you need to fix it. If a previously working
+ISP won’t read the target device ID, then the last option is to use your ISP to attempt to
+read the device ID of another student’s target ATmega328. If you can read a different
+device’s signature, but not your own, then there is more than likely something wrong
+with your target 328 and it will need to be replaced. This process should tell you where
+the problem lies.
+Once you have successfully established communication with your target microcontroller,
+you are now ready to proceed with the building on your permanent project. But first…
+At this point, you need to stop and document everything you have done up to this
+point in your logbook! You need to take pictures of how things are connected,
+and screen shots of what you have typed and what responses you received.
+Document all of this in your logbooks!!
+Once you have everything up to this point documented in your logbook, solder the
+required components onto the half-sized protoboard. Be certain to utilize the 28-pin DIP
+socket that came in your parts kit.
+Do NOT solder your microcontroller directly to the protoboard.
+Once you have your board built, install your microcontroller into the socket and repeat
+the same process from above to verify that your microcontroller is still communicating.
+If your microcontroller is no longer communicating or providing a valid device ID, then
+more than likely there is a problem with the board you built. It is also possible that you
+damaged your target 328 somehow. The easiest way to find out is to place the target
+microcontroller back into the solderless breadboard and repeat the steps from above. If
+you can communicate with the target 328 while it is in your breadboard, but not in the
+circuit you built, then you know the problem is with the circuit you built. If you can’t
+communicate with the target in either the solderless protoboard or the circuit you built,
+the problem could either be with the ISP or with the target 328. Follow the steps above
+to figure out which one is the problem.
+Once you have your board built and working, you need to make updated entries
+and document everything in your logbook!
+Once your finished board is communicating, you are now ready to start downloading
+programs into your target microcontroller to prove that it is fully operational.
+12
+
+Preparing to Transfer Programs into your Target ATmega328
+Now it is time to download your code into the target. There are at least three different
+ways to transfer your program into the target microcontroller. Regardless of which
+approach you utilize, you have to have the ISP program running in your ATmega2560.
+You can open the Arduino IDE each time you need to do this, or you can take
+advantage of the following process.
+One of the hidden details associated with the Arduino IDE is that the Arduino IDE does
+in fact create a Hex file. Most people don’t realize this because it is automatically
+downloaded into the target microcontroller. By default, the Arduino IDE does not tell
+you what the file name is, or where that file is located on your computer. Moreover, the
+file is usually placed in a hidden file folder that is very difficult to find on your own.
+However, you can go into the settings of the Arduino IDE and tell the IDE to show you
+where the file is located. To do this, select the “Preferences” option under “File”, and
+then check on the “show verbose” option for compilation. Now, when you compile your
+code, you will see a long list of messages in the output window. If you scroll up through
+those messages, you should be able to not only find the name of the hex file that was
+created, but you’ll also find the directory/folder structure for where that file is located.
+This should be in a hidden folder, but you can change the options in Explorer to show
+hidden folders and then you can actually go straight to that file and access the hex file.
+This brings up a question: Why would you want to access the hex file created by the
+ISP Example program? Well, for one, if you know where this hex file is located, you can
+actually use the same Uploader GUI from ECET 17900 to simply upload the hex file into
+your Arduino anytime you want to turn the Arduino into an ISP Programmer without
+having to go back through the Arduino IDE to do it! This could be very handy.
+If you want to possibly do this, you would be wise to create a new folder in your 27000
+folder or somewhere similar, and not only copy the hex file into this new location, but
+you should also create a document that outlines all the procedures to actually use the
+ISP Programmer like what pins are used for the SPI connections, and the like. Putting
+all of that in one place makes it much easier to utilize the ISP in the future!
+Note: This same process will actually work for any project created in the Arduino IDE.
+They all create Hex files and you can use this approach to copy those Hex files into a
+better folder location so you can access them later if you so desire, without having to go
+through the Arduino IDE.
+Back to the task at hand: Regardless of the approach, you must make certain that the
+ISP program is downloaded into your ATmega2560 to turn it (back) into an ISP so we
+can move forward.
+13
+
+Using AVRDude to Program your Target
+The first approach we’re going to cover is the same one that you utilized to verify that
+your target microcontroller was “alive”.
+Let’s assume that you have created a program called Output_0x32 that simply writes
+the hexadecimal value 32 to Port D on the target ATmega328 microcontroller and you
+want to transfer this program into your target microcontroller. Once you have this
+program written, you need to copy the Output_0x32.hex file to same folder as the
+AVRDude application so that you don’t have to deal with the file path (this is why there
+were hex files in the folder with the ARVDude application from earlier).
+In order to actually transfer the code, you need to execute a command like the one
+shown below. Here, the first part of the command is the same as that used to establish
+communication with the target. The difference between the original command and this
+one is that this command sequence includes the keyword “-U flash:w:” which tells the
+programmer to write the specified hex file into the target microcontroller’s flash memory.
+c:\>avrdude -P COM12 -b 19200 -c avrisp -p m328p -u -U flash:w:”Test_program.hex”:i
+
+Below is what the process would look like to execute the command to transfer the file
+called “Output_0x32.hex” into the target microcontroller.
+
+Once the command is executed, the programmer will establish communication with the
+target, and then the HEX file will be downloaded into the target microcontroller. Once
+the file is written to the target, the programmer will verify that the program was
+successfully placed in the target. Upon verification of the programming process, the
+sequence ends and the target microcontroller will now be running the program! This
+process can be used to transfer any existing hex file into the target.
+14
+
+Programming Straight from AVR Studio
+While highly effective, the process of using a command window is not the most userfriendly method. However, there are at least two other methods that are much, much
+easier to do. The first one will take advantage of the External Tools feature built into
+AVR Studio, and is almost identical to the process utilized in ECET 27900!
+Once you have downloaded the Arduino ISP example code into your ATmega2560, you
+can tell AVR Studio to utilize this programmer to load programs directly from AVRStudio
+into your target board, through the programmer.
+To start, select the Tools option in AVRStudio, and then select External Tools. (Note:
+you have to specify that you want to be an Advanced User to do this).
+
+Once selected, a window will appear where you configure the external tool (shown on
+the next page). Start by selecting the Add button and then specify the title of the tool. In
+this case, I called mine “Program 27000 Board”. Next, click on the button next to the
+Command textbox and navigate to your folder where the AVRDude program is located,
+and then click on the AVRDude.exe file. Once that is selected, the next step is to type
+the string below into the Arguments textbox as a single line while replacing the ## next
+to COM with the com port of your ISP:
+-P\\.\COM## -b 19200 -c avrisp -p m328p -u
+-U flash:w:"$(ProjectDir)Debug\$(TargetName).hex":i
+15
+
+Once you have the AVRDude exe file linked and the arguments entered, select the “Use
+Output Window” checkbox and then Apply, followed by OK.
+
+If things are configured properly, now you can create a program for your target
+ATmega328 board inside AVRStudio, and then click on the Tools tab and the “Program
+270 Board” option, and the process should automatically happen! The really nice thing
+about this approach is that the “(ProjectDir)” and “(TargetName)” options are
+automatically filled in by AVRStudio. Also, since we checked the “Use Output Window”
+option, the progress and results will be displayed in the window at the bottom of the IDE
+so you can see if the file was uploaded successfully or if something went wrong.
+
+16
+
+Programming Through the Arduino IDE
+The same type of process can also be done with the Arduino IDE. To setup the process
+in the Arduino IDE, simply go to the Tools pulldown menu, then select the “Arduino as
+ISP” option from the list of available Programmers (see the image on the next page),
+and be certain to specify the port that goes with your ISP microcontroller. There is one
+big “catch” to this approach. The Arduino IDE assumes that your ISP will be
+communicating at 115200, not the default 19200. To overcome this issue, you need to
+specify in your ISP code that you are using a different baud rate. To do this, simply
+comment out the line of code that defines the baud rate to be 19200 and uncomment
+the line of code that will then specify the baud rate to be 115200.
+// Configure the baud rate:
+//#define BAUDRATE
+
+19200
+
+#define BAUDRATE
+
+115200
+
+Once you have made this change, you will need to re-compile the ISP code and
+download it into your ATmega2560. Actually, you could specify 115200 as the baud rate
+for any of the approaches, not just this one. If you do this, you would need to specify the
+correct baud rate when you type the commands or in the AVR Studio arguments.
+17
+
+With those change made, you can create sketches inside the Arduino IDE for the target
+ATmega328 and then download them through the ISP into the target board simply by
+clicking on the Download button. The Arduino IDE should automatically download the
+code through the ISP for you. One note here: When I do this, there is a very noticeable
+pause or delay before the program is actually downloaded. I don’t know if this is normal,
+or just my computer.
+
+Extra Stuff
+You can use the steps outlined in this document to program a multitude of Atmel
+microcontrollers. A complete list can be found in the AVRDude programmer
+documentation. For this project, you will always use “-p m328p”, but again, that’s not
+the only one we can program.
+It should also be noted here that you can use these processes to place the Arduino
+BootLoader into a new chip if you would ever need to do so.
+
+18
+
+Need a Permanent Programmer?
+Depending on the level of microcontroller programming you do, or the types of projects
+that you do, you might find yourself in need of or wanting a “permanent” programmer.
+You can buy a commercially available programmer from multiple sources. Some
+popular choices are the Atmel AVRISP mkII, the Sparkfun Pocket AVR Programmer, or
+the Sparkfun Tiny AVR programmer. The prices of these can range from over $125
+down to $15 or so. However, you can also make your own for around $5 with very little
+effort.
+A very inexpensive option is to buy an Arduino Nano type board from Amazon like the
+one shown below for around $5, and then download the ISP Example code into it! Once
+you do that, then you have a $5 programmer that you can just leave programmed all the
+time. One big advantage of the Nano board is that it comes with a USB connection, so
+you can plug it into your computer for power and communication.
+
+There are a few details that you have to get right, but they are minimal. For starters, I
+would set the baud rate to 115200 as previously discussed in this document. Next, you
+need to specify where you want your interface pins to be located. We originally used
+pins 50 through 53. The Nano does not have that many pins. When I did this, I put SCK,
+MISO, and MOSI pins on 2, 3, 4, and reset on pin 5 and it worked just fine for me.
+If you read through all of the comments at the top of the ISP Example code, you will see
+references to some status LEDs for things like “Heartbeat”, “Programming”, and “Error”.
+You don’t have to have these LEDs, but they can be nice to have especially if you’re
+going to make a permanent programmer. If can be helpful to have these indicators in
+certain situations.
+
+19
+
+20
+
+Testing of the Simplified ATmega328 Project:
+A major goal of the simplified ATmega328 project is testing the board. More
+specifically, it is the development and then execution of test plans.
+One of the biggest mistakes people make when trying to test a project is that they only
+test one or two things and they don’t thoroughly test all of the functionality of the project.
+Another common mistake is that people don’t focus on one small piece of the project at
+a time and tend to combine the testing of features together which leads to confusion in
+the results and increases the likelihood that some features aren’t tested thoroughly, or
+tested at all.
+The goal of this document is to lead you through the development of a series of simple
+test plans to thoroughly test your ATmega328 project. For this project, we will need to
+develop at least five different test plans: 1 – establishing communication with the target
+and verifying the device signature, 2 – basic input and output operation, 3 – verifying
+UART communications, 4 – verification of the Analog-to-digital converter, and 5 – the
+ability to create pulse-width modulated outputs.
+
+Getting Started:
+Let’s start at the beginning. You will need to be able to communicate with your
+ATmega328 through the ISP in order to do anything with your ATmega328. Since you
+have to be able to communicate in order to do anything else, this is logically the first
+thing to test.
+This document will walk you through the process of creating a detailed test plan for this
+section.
+The first step is to write out the goals for the test. Then we need to document any setup
+stuff that needs to happen. Next, we’ll need to create a detailed list of steps that need to
+be followed, along with the results that we expect after each step. Once we have all of
+the required information, the last step is to actually enter this information into an Excel
+Spreadsheet to create the actual formal test plan and procedures. As you actually test
+the project, you record the results either in Excel or you print out the Excel Spreadsheet
+and record the results on the paper by hand. For this course, printing the test plans is
+the preferred method since they can then be placed into your logbook!
+
+21
+
+Test #1 – Establishing Communication and Reading the Device Signature
+The Goal:
+The goal of this test is to determine if the target microcontroller is “alive” by
+establishing communication with the ATmega328 microcontroller (the
+ATmega328 is known as the Target since it is the device that we will be
+programming). We will know that the target is operational and responding
+properly if we are able to successfully read the device signature.
+Setup:
+In order to establish communication with the target, an ISP is needed. For this
+project, an ATmega2560 will be programmed as an ISP through the ARDUINO
+IDE. If not previously done, the ISP program must be downloaded into the
+ATmega2560.
+Once the ISP is ready, the next step is to power the simplified ATmega328
+board. The easiest way to supply power to the simplified ATmega328 board is to
+power it from the ISP since the ISP will be connected to a PC through a USB
+cable. Start by connecting a common ground wire between the simplified
+ATmega328 and the ISP board. Then, connect a wire between the VCC pin on
+the simplified ATmega328 and the ISP board.
+Once the boards are powered, the next step is to establish the connections
+required to program the target through the ISP. These include the Reset line, the
+serial clock, and the data in and data out lines. Historically, the data in and data
+out lines were known as MISO and MOSI. Depending on the resources you are
+using, these lines may have different names, but they still function the same.
+Regardless of the names, make these four connections between the target and
+the ISP.
+Detailed Steps:
+Connect an ISP to the target ATmega328 microcontroller.
+Ensure that the ISP and the target are both powered. Use a voltmeter to
+measure the voltage on the VCC and GND pins on the target 328
+microcontroller.
+Launch a Command Prompt window
+Execute the AVR Dude command to read the target’s device ID.
+Verify that the reported target’s device ID matches the manufacturer’s device ID.
+22
+
+Once we have the above information, the next step is to take this information and create
+formal test plan using the Excel template provided. The formal test plan for establishing
+communication is shown at the end of this document as an example to follow for
+creating test plans.
+Now that we have a formal test plan, the next step is to follow the test plan and record
+the results! For this course, the best option is to print out the test plan and record the
+results on the paper version so you can place it into your logbook.
+In the event that there is a “failure” along the way, then troubleshooting and repair, or
+other work must be done to fix the issues that caused the failure. Once the failure has
+been addressed, the test must be started over while again recording the results.
+Hopefully whatever issue was causing the failure can be found and fixed.
+It is important to document the process of testing your projects. From an educational
+perspective, instructors want to see that you tested the project, that you performed any
+troubleshooting necessary, and that you fixed any issues. Therefore, if you have a test
+that encounters a failure, you should document this failed test in your logbook (tape the
+formal test plan with the failed results in your logbook). Once you’ve documented the
+failed test, the next step is to hypothesize as to what may have caused the failure and to
+create a “plan of action” to troubleshoot and fix the issues. This plan of action should
+also be documented in your logbook and with any “repairs” that you made. Then, you
+need to rerun the test and include those results in your logbook as well.
+Now that we have a formal test plan for establishing communications and reading the
+device signature, the next step is to create the other test plans following the same
+steps.
+The following sections provide significant guidance for how to test each piece of the
+project, but you will notice that the sections are not broken down in the same manner as
+the first test was. The expectation is that the students should be able to take these
+steps and determine what the goal is, what setup needs to happen, the steps and the
+results without those being explicitly stated or organized as such in each section.
+
+23
+
+Test #2 – General Purpose Input and Output
+For this test, you need to use a lights and switches board to provide inputs to
+your ATmega328 and to monitor the output from the ATmega328. The one you
+created in ECET 17900 should be sufficient, but you could also use the one
+you’re building in ECET 27000 if you have it finished.
+Start simple. Create a basic program that will configure Port B as an output and
+then output a known value like 0x55. Connect Port B to the LEDs on your lights
+and switches board. As long as everything is working properly, every other output
+will be on/off. This will identify “broken” port pins such as pins that are shorted
+together or open connections. Note: You only have 6-bits, but you can still use
+this value, you just won’t see the 2-bits.
+Then, modify the program to output a value of 0xAA. Similar goal, just swapping
+the highs and the lows.
+Once you have tested those values, change the value to 0x32. This value should
+allow you to clearly identify the upper and lower nibbles to make sure all the pins
+are in the correct order.
+Using the above steps, we can create a very specific formal plan to test the Port
+B as an output.
+Once we have the above plan written, we can modify it to test Port C as an
+output. It is very simple to create this second test. Literally, just copy and paste
+the previous test and change from Port B to Port C. As a note: Port C (because
+of the ADC) may be powered by the AVCC pin instead of VCC. If you do not get
+the expected results, make certain you are providing 5-volts to the AVCC pin and
+try again.
+Now that you have a test plan for Port B and Port C, copy and paste the plan to
+create a third test plan for testing Port D using the same process. Note: Port D is
+a “full” 8-bit port instead of 6-bits like Port B and Port C.
+Be certain to print each of these test plans, fill them out, and put them in your
+logbook!
+Once you have tested each of the ports as an output, the next step is to prove
+that you can read data into your microcontroller through the ports. For this test,
+you need to create a program that configures one port as an input and then
+configures one of the other ports as an output since we don’t have a standard
+serial port (we could use printf if we had a serial connection). Once the ports are
+configured, then you simply read the inputs and write them to the output with a
+24
+
+simple statement like: PORTB = PINC; Connect the switches and pushbuttons
+from the lights and switches board to Port C to provide inputs to the test program,
+and then connect the output of Port B to the LEDs on the lights and switches
+board. Once you have this program compiled and downloaded into your
+microcontroller, all you need to do is manipulate the pushbutton and switches to
+provide predetermined patterns that then should show up on the output LEDs.
+Again, the values of 0x55 and 0xAA are create starting points, along with the
+value 0x32. You can also use other patterns, but if you do, be certain to include
+them as steps in your test plan.
+Now that we have a test plan for reading from Port C, we need to also test the
+ability of our microcontrollers to read from Port B. As in the previous section,
+simply copy and paste the test plan and then change the input from Port C to
+Port B, and change the output for the plan from Port B to Port C. Then, utilize this
+plan to test this version of the code. Be certain to document each version of the
+test plan and record the corresponding results in your logbook.
+Once you have completed the testing of Port B and Port C, modify the test plan
+to read values from Port D and display them on Port B. Note: Port D is a full 8bits and Port B is only 6-bits, so two bits will not be visible, but you can still verify
+the operation of the ports.
+Test #3 – UART Serial Communication
+The goal of this test is to ensure that you can send and receive data through the
+serial UART inside your ATmega328. You can take one of two approaches with
+this test. You can either display data on the LCD to prove you can send data, OR
+you can get creative and use the USB Bridge chip that is on another
+microcontroller development board (my preference).
+Start by creating a simple program that uses a printf to send a message like
+“Hello World”. To create this program, you will need to include a local copy of
+serial.c. However, for this project, it isn’t as simple as just copying this file and
+pasting it in your working directory. The target ATmega328 should be running at
+1MHz instead of 16MHz like your Mega2560. Therefore, you will need to change
+the values inside the init_UART() function to reflect the frequency change. You
+can reference the UART Baud Rate equations from 17900 lecture, OR you can
+Google how to configure the UART or you can look them up in the datasheet!
+What you should find is that you cannot create 9600 baud using the “normal”
+settings. In order to create a 9600 baud output, you will have to set the “double
+speed” bit in the UART and calculate new values for UBRRL and UBBRH.
+Document these in the setup section of this formal test plan.
+25
+
+Create the code required to produce the Hello World program, and download it
+into your target.
+Read this section carefully! Once you have this program downloaded into your
+target, place a jumper wire between the reset line and ground on your ISP board.
+This will hold your ISP micro in a state of reset. Then, connect the RX pin on
+your target ATmega328 to the RX pin on the ISP board, and then do the same
+with the TX pins. This will connect your target microcontroller to the USB Bridge
+chip located on the ISP board and will allow you to send serial messages to the
+PC through the USB connection on the ISP!
+Connect Cool Term or a similar application to the USB connection on your ISP.
+Once connected, reset your 328 microcontroller and the Hello World message
+should appear on the terminal if things are working properly!
+In order to download a new program into your target, you will have to remove the
+jumper wires between the TX and RX pins, AND the jumper wire holding the ISP
+in a state of reset.
+Once you have proven you can send messages to the terminal with your target
+ATmega328, modify the test program to utilize a scanf to get a value from the
+terminal and then send that value back to the terminal with a printf. This will
+verify that you can both send and receive data through the UART.
+Be certain to document both of these test plans and put them in your logbook.
+Note: Placing a jumper wire between the reset line and ground on your ISP
+microcontroller will hold the microcontroller in a state of constant reset. When in
+this state, the pins of the target ISP go into a high impedance state and
+effectively don’t exist. This state allows us to jump the RX and TX pins from the
+target 328 to the USB bridge chip without causing contention on the pins!
+Test #4 – Analog to Digital Conversions
+Testing of the analog to digital converter should be straightforward, if you
+remember what we did in ECET 17900. In fact, you can utilize the functions and
+first ADC program that we created in ECET 17900 direct, without any
+modifications.
+Start simple. Create a simple test plan and program that will initialize the ADC
+and then read a single 8-bit value from input ADC0 and then display that value
+on the LEDs (for this program, do NOT continuously read ADC values! Read one
+value, display it, and then enter into a while(1) loop that does absolutely nothing.
+You will have to reset the microcontroller each time you want a new value
+26
+
+displayed). Since you’ll need eight LEDs to display the 8-bit value, utilize Port D
+for this. Ensure that the UART code from the previous step is NOT in this code!
+The UART uses Port D bits 1 and 0 for serial communication. If the UART is
+active, you cannot use these bits for general purpose I/O (GPIO). Utilize a
+potentiometer to provide the analog input voltage. Connect one end of the
+potentiometer to 5-volts, connect the other end to ground, and then connect the
+middle pin (the wiper) to the microcontroller to create an adjustable voltage. Test
+the program with the wiper set at 0 volts, 2.5 volts, and 5 volts at a minimum.
+You could also add a couple intermediate values like 1.25 and 3.75, but you don’t
+need a “bunch” of test points. Three to five test points should be enough for this
+program.
+Once you have the above program working, change the program so that you are
+continuously reading values from the ADC and displaying them on the LEDs
+(move the read and write code inside the while(1) loop). With this program, the
+LEDs should instantaneous change as you adjust the potentiometer. This proves
+that you can make continuous ADC reads and get the correct results.
+Once you have the basic 8-bit conversions working, the next step is to create a
+program that will read each individual channel of the ADC (channel 0 through 5)
+and display those results. This is where the serial port connection through the
+ISP board becomes very handy! A printf statement will allow you to display all six
+values next to each other, at once. Ideally, you would utilize six potentiometers
+to provide analog values to all the ADC inputs at once, but this may not be
+practically possible. You should have at least three potentiometers from ECET
+17900. If you only have three potentiometers, you could ground the unused ADC
+inputs while you test the other three, and then move the potentiometers down to
+the next three inputs while grounding the previous three. As an alternative, you
+could borrow one of your classmate’s potentiometer setups that would then give
+you a total of six potentiometers. You could also acquire three more
+potentiometers, or you may already have them from another course. Regardless
+of the details, you need to test all six of the ADC inputs and prove that you can
+read them individually when they are all connected to an analog voltage.
+*Optional Testing: You should also test 10-bit conversions with your
+microcontroller. For this test, the same approach described earlier (multiple
+potentiometers with a printf) would be used, but with 10-bit results instead of 8-bit
+results. It would be good to test one single 10-bit conversion first, and then a
+second program that continuously converts 10-bit values from all of the channels
+individually and then displays those results.
+
+27
+
+Test #5 – Pulse Width Modulated Outputs
+The last thing to test for this project is to prove that your target microcontroller is
+capable of producing pulse-width modulated outputs. Here, we’re only going to
+focus on the Timer 0 and Timer 1 pulse-width outputs (Timer 2 is also capable of
+creating PWM but we don’t usually use that timer for PWM so we’re not going to
+bother with it here).
+For the first program and test plan, create a simple program that creates a 50%
+duty cycle output waveform on pin OC0A. Make certain you calculate the
+expected frequency based on a 1MHz clock, not a 16 MHz clock! Again, we did
+this exact thing in a homework assignment in ECET 17900. If it isn’t obvious,
+you will need to utilize an oscilloscope to display and monitor the outputs for the
+tests in this section.
+Once you have the previous program working, the next test and program is to
+add the second channel from Timer 0 though the OC0B output. Again, output a
+fixed duty cycle, but this time, use something like a 25% or 75% duty cycle so
+that there is distinct difference between OC0A and the OC0B outputs.
+Once you have that done, the next program (and test) should make the output
+duty cycles variable. The easiest way to do this is to include the ADC functions
+from the previous section and read an 8-bit from ADC0 and another 8-bit value
+from ADC1. Utilize the 8-bit value ADC0 to control the pulse width of the OC0A
+output and utilize the ADC1 value to control the pulse width of OC0B. For this
+test, you should be continuously reading the ADC values and updating the OCR
+registers. *You should have created a program that does this in ECET 17900.
+Now that you can control the pulse width modulated signals using Timer 0, you
+need to move to Timer 1. Start with the same programs and modify them to
+utilize Timer 1 instead of Timer 0 (make sure you copy and paste the
+programs! Don’t overwrite your previous code and be certain to setup the
+required port pins for output). As discussed early in this section, start with the
+single channel output program, and then move to the others. Don’t cut corners
+and jump to the last program. Do your testing systematically! In the end, you’ll
+have the same number of test programs and results for Timer 0 as you have for
+Timer 1.
+Once you have tested Timer 1 in 8-bit mode, then next (and last) test should
+utilize Timer 1 to create 16-bit PWM outputs. For this test, go back to ECET
+17900 and utilize the programs for PWM Mode 14.
+
+28
+
+For the 16-bit testing, you should create two sets of programs and test. The first
+is similar to what we did for the Timer 0. Create a simple PWM test program that
+will output a known frequency and duty cycle (or pulse) for both the A and B
+outputs of Timer 1 using Fast PWM Mode 14. Make certain that the pulse widths
+are different between the two channels.
+Once you have the previous test code working, create a new test that utilizes the
+ADC to read potentiometer values into your program. Then, utilize these values
+to control the pulse widths. For this test, you might be better off to utilize the 10bit versions of the ADC functions since the pulse is 16-bits. If you only utilized
+the 8-bit conversions, you can only control a small portion of the overall pulse
+width value. Even with the 10-bit conversions, you’ll only be able to control a
+small portion. Regardless of which one you use, consider multiplying the ADC
+conversion result by a “scaling factor” to utilize the full range. If you multiplied
+the result of a 10-bit conversion by 64, then you would ultimately have a value
+that goes from 0 to almost 65536 that would allow you to adjust the output pulse
+across the entire cycle. If you multiply an 8-bit result by 256, you will also create
+values that go from 0 to 65536.
+
+Logbook Requirements:
+ You should have enough detailed information in your logbook that you can
+recreate the process of creating an ISP using only the information in your
+logbook!
+ You also need to create the required test plans (Excel sheets) using the
+information provided here. Once you have created these test plans, you
+need to print them out, and then fill them out as you test your simplified
+microcontroller board.
+
+29
+
+30
+
+

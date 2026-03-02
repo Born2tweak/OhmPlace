@@ -62,7 +62,7 @@ export default function StatsCard({ title, value, icon, trend, href }: StatsCard
                 </div>
             )}
             <h3 className="text-sm font-medium mb-1 uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{title}</h3>
-            <div className="text-3xl font-bold mb-1 tabular-nums" style={{ color: 'var(--text-primary)' }}>
+            <div className="text-4xl font-extrabold mb-1 tabular-nums" style={{ color: 'var(--text-primary)' }}>
                 {isNumeric ? displayValue : value}
             </div>
             {trend && (

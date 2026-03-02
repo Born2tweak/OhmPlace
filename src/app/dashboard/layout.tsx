@@ -19,6 +19,7 @@ export default function DashboardLayout({
     const pathname = usePathname()
     const { theme, setTheme } = useTheme()
     const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
+    const [tappedNav, setTappedNav] = useState<string | null>(null)
 
     // Sync profile to Supabase on load
     useEffect(() => {
@@ -45,37 +46,21 @@ export default function DashboardLayout({
         syncProfile()
     }, [user])
 
-    const navItems = [
-        {
-            href: '/dashboard',
-            label: 'Dashboard',
-            icon: LayoutDashboard
-        },
-        {
-            href: '/dashboard/marketplace',
-            label: 'Marketplace',
-            icon: ShoppingBag
-        },
-        {
-            href: '/dashboard/my-listings',
-            label: 'My Shop',
-            icon: Store
-        },
-        {
-            href: '/dashboard/community',
-            label: 'Community',
-            icon: Users
-        },
-        {
-            href: '/dashboard/messages',
-            label: 'Messages',
-            icon: MessageSquare
-        },
-        {
-            href: '/dashboard/settings',
-            label: 'Settings',
-            icon: Settings
+    // Clear bounce animation after it plays
+    useEffect(() => {
+        if (tappedNav) {
+            const timer = setTimeout(() => setTappedNav(null), 400)
+            return () => clearTimeout(timer)
         }
+    }, [tappedNav])
+
+    const navItems = [
+        { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { href: '/dashboard/marketplace', label: 'Marketplace', icon: ShoppingBag },
+        { href: '/dashboard/my-listings', label: 'My Shop', icon: Store },
+        { href: '/dashboard/community', label: 'Community', icon: Users },
+        { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
+        { href: '/dashboard/settings', label: 'Settings', icon: Settings }
     ]
 
     return (
@@ -127,10 +112,10 @@ export default function DashboardLayout({
                 </div>
             </header>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 pb-24 lg:pb-8">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Sidebar */}
-                    <aside className="lg:col-span-1">
+                    {/* Sidebar — hidden on mobile */}
+                    <aside className="hidden lg:block lg:col-span-1">
                         <nav className="glass rounded-2xl p-3 sticky top-24">
                             <ul className="space-y-1">
                                 {navItems.map((item) => {
@@ -160,12 +145,56 @@ export default function DashboardLayout({
                         </nav>
                     </aside>
 
-                    {/* Main Content */}
+                    {/* Main Content — page transition on route change */}
                     <main className="lg:col-span-3">
-                        <ToastProvider>{children}</ToastProvider>
+                        <div key={pathname} className="page-transition">
+                            <ToastProvider>{children}</ToastProvider>
+                        </div>
                     </main>
                 </div>
             </div>
+
+            {/* Mobile Bottom Navigation — enhanced glass + tap bounce */}
+            <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden"
+                style={{
+                    borderTop: '1px solid var(--border-subtle)',
+                    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(24px) saturate(1.8)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(1.8)',
+                }}
+            >
+                <div className="flex items-center justify-around px-2 h-16">
+                    {navItems.map((item) => {
+                        const Icon = item.icon
+                        const isActive = pathname === item.href
+                        const isBouncing = tappedNav === item.href
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setTappedNav(item.href)}
+                                className="flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl transition-all min-w-[56px]"
+                                style={{
+                                    color: isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
+                                }}
+                            >
+                                <div
+                                    className={`flex items-center justify-center w-10 h-7 rounded-full transition-all duration-300 ${isBouncing ? 'nav-tap-bounce' : ''}`}
+                                    style={{
+                                        background: isActive
+                                            ? 'color-mix(in srgb, var(--brand-primary) 15%, transparent)'
+                                            : 'transparent',
+                                    }}
+                                >
+                                    <Icon className="w-5 h-5" />
+                                </div>
+                                <span className={`text-[10px] leading-tight ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
+                            </Link>
+                        )
+                    })}
+                </div>
+            </nav>
         </div>
     )
 }

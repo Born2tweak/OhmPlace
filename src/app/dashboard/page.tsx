@@ -110,10 +110,10 @@ export default function DashboardPage() {
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             {/* Greeting Section */}
-            <div className="rounded-2xl p-8 text-white shadow-lg relative overflow-hidden animate-fade-in-up"
+            <div className="rounded-2xl p-5 sm:p-8 text-white shadow-lg relative overflow-hidden animate-fade-in-up"
                 style={{ background: 'var(--brand-primary)', opacity: 0 }}>
                 <div className="relative z-10">
-                    <h1 className="text-3xl font-bold mb-2">{getGreeting()}, {user?.firstName || 'Student'}!</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2">{getGreeting()}, {user?.firstName || 'Student'}!</h1>
                     <div className="flex items-center gap-2 opacity-90">
                         <span className="text-xl">🎓</span>
                         <span className="font-medium">{schoolName}</span>

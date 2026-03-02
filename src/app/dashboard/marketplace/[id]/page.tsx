@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, use } from 'react'
+import React, { useState, useEffect, useRef, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Truck, Loader2 } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Truck, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Listing, ListingImage } from '@/types/database'
 import { useToast } from '@/components/Toast'
 
@@ -168,47 +168,110 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             </button>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Images */}
+                {/* Left Column: Swipeable Image Carousel */}
                 <div className="lg:col-span-2 space-y-4">
-                    <div className="aspect-video rounded-xl overflow-hidden relative"
+                    <div className="rounded-xl overflow-hidden relative"
                         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+
+                        {/* Swipeable image container */}
                         {listing.images && listing.images.length > 0 ? (
-                            <img
-                                src={listing.images[selectedImageIndex].image_url}
-                                alt={listing.title}
-                                className="w-full h-full object-contain"
-                            />
+                            <div
+                                className="relative aspect-video overflow-hidden touch-pan-y"
+                                onTouchStart={(e) => {
+                                    const touch = e.touches[0]
+                                        ; (e.currentTarget as any)._touchStartX = touch.clientX
+                                        ; (e.currentTarget as any)._touchStartY = touch.clientY
+                                }}
+                                onTouchEnd={(e) => {
+                                    const startX = (e.currentTarget as any)._touchStartX
+                                    const startY = (e.currentTarget as any)._touchStartY
+                                    if (startX == null || startY == null) return
+                                    const endX = e.changedTouches[0].clientX
+                                    const endY = e.changedTouches[0].clientY
+                                    const diffX = startX - endX
+                                    const diffY = startY - endY
+                                    // Only swipe if horizontal movement > vertical
+                                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                                        if (diffX > 0 && selectedImageIndex < (listing.images?.length || 1) - 1) {
+                                            setSelectedImageIndex(prev => prev + 1)
+                                        } else if (diffX < 0 && selectedImageIndex > 0) {
+                                            setSelectedImageIndex(prev => prev - 1)
+                                        }
+                                    }
+                                }}
+                            >
+                                <div
+                                    className="flex transition-transform duration-300 ease-out h-full"
+                                    style={{ transform: `translateX(-${selectedImageIndex * 100}%)` }}
+                                >
+                                    {listing.images.map((img, idx) => (
+                                        <img
+                                            key={img.id}
+                                            src={img.image_url}
+                                            alt={`${listing.title} - Image ${idx + 1}`}
+                                            className="w-full h-full object-contain flex-shrink-0"
+                                            draggable={false}
+                                        />
+                                    ))}
+                                </div>
+
+                                {/* Nav arrows (desktop) */}
+                                {listing.images.length > 1 && (
+                                    <>
+                                        {selectedImageIndex > 0 && (
+                                            <button
+                                                onClick={() => setSelectedImageIndex(prev => prev - 1)}
+                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-sm hover:bg-black/60 transition-all hidden sm:flex"
+                                            >
+                                                <ChevronLeft className="w-5 h-5" />
+                                            </button>
+                                        )}
+                                        {selectedImageIndex < listing.images.length - 1 && (
+                                            <button
+                                                onClick={() => setSelectedImageIndex(prev => prev + 1)}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-sm hover:bg-black/60 transition-all hidden sm:flex"
+                                            >
+                                                <ChevronRight className="w-5 h-5" />
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Image counter badge */}
+                                {listing.images.length > 1 && (
+                                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/50 text-white text-xs font-medium backdrop-blur-sm">
+                                        {selectedImageIndex + 1} / {listing.images.length}
+                                    </div>
+                                )}
+                            </div>
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center">
+                            <div className="aspect-video flex items-center justify-center">
                                 <span className="text-4xl">🔌</span>
                             </div>
                         )}
+
                         {listing.status !== 'available' && (
-                            <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 text-white text-sm font-bold uppercase rounded-full backdrop-blur-sm">
+                            <div className="absolute top-4 left-4 px-3 py-1 bg-black/70 text-white text-sm font-bold uppercase rounded-full backdrop-blur-sm">
                                 {listing.status}
                             </div>
                         )}
-                    </div>
 
-                    {/* Thumbnails */}
-                    {listing.images && listing.images.length > 1 && (
-                        <div className="flex gap-4 overflow-x-auto pb-2">
-                            {listing.images.map((img, idx) => (
-                                <button
-                                    key={img.id}
-                                    onClick={() => setSelectedImageIndex(idx)}
-                                    className={`relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all ${selectedImageIndex === idx ? 'ring-2 ring-offset-2' : 'opacity-70 hover:opacity-100'
-                                        }`}
-                                    style={{
-                                        borderColor: selectedImageIndex === idx ? 'var(--brand-primary)' : 'transparent',
-                                        // outlineColor: selectedImageIndex === idx ? 'var(--brand-primary)' : 'transparent'
-                                    }}
-                                >
-                                    <img src={img.image_url} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                        {/* Dot indicators */}
+                        {listing.images && listing.images.length > 1 && (
+                            <div className="flex items-center justify-center gap-1.5 py-3">
+                                {listing.images.map((_, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setSelectedImageIndex(idx)}
+                                        className={`h-1.5 rounded-full transition-all duration-300 ${selectedImageIndex === idx
+                                                ? 'w-5 bg-[var(--brand-primary)]'
+                                                : 'w-1.5 bg-[var(--border-subtle)] hover:bg-[var(--text-muted)]'
+                                            }`}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right Column: Details */}

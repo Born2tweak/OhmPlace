@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, AlertCircle } from 'lucide-react'
 import { FLAIRS } from './FlairBadge'
 
@@ -16,15 +16,36 @@ export default function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePos
     const [flair, setFlair] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [closing, setClosing] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 1024)
+        check()
+        window.addEventListener('resize', check)
+        return () => window.removeEventListener('resize', check)
+    }, [])
 
     if (!isOpen) return null
 
     const handleClose = () => {
-        setTitle('')
-        setBody('')
-        setFlair(null)
-        setError(null)
-        onClose()
+        if (isMobile) {
+            setClosing(true)
+            setTimeout(() => {
+                setClosing(false)
+                setTitle('')
+                setBody('')
+                setFlair(null)
+                setError(null)
+                onClose()
+            }, 300)
+        } else {
+            setTitle('')
+            setBody('')
+            setFlair(null)
+            setError(null)
+            onClose()
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -46,6 +67,128 @@ export default function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePos
         }
     }
 
+    // Bottom sheet on mobile, centered modal on desktop
+    if (isMobile) {
+        return (
+            <div
+                className={`fixed inset-0 z-50 ${closing ? '' : 'bottom-sheet-overlay'}`}
+                style={{ background: 'rgba(0,0,0,0.5)' }}
+                onClick={handleClose}
+            >
+                <div
+                    className={`fixed bottom-0 left-0 right-0 rounded-t-2xl shadow-2xl max-h-[90vh] overflow-y-auto ${closing ? '' : 'bottom-sheet-content'}`}
+                    style={{
+                        background: 'var(--bg-card)',
+                        paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+                        animation: closing ? 'bottomSheetDown 0.3s ease-in forwards' : undefined,
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Drag handle */}
+                    <div className="flex justify-center pt-3 pb-1">
+                        <div className="w-10 h-1 rounded-full" style={{ background: 'var(--border-subtle)' }} />
+                    </div>
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-3"
+                        style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Create a Post</h2>
+                        <button onClick={handleClose} className="p-1" style={{ color: 'var(--text-muted)' }}>
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                        {error && (
+                            <div className="flex items-start gap-2 p-3 rounded-lg"
+                                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-sm text-red-600">{error}</p>
+                            </div>
+                        )}
+
+                        {/* Flair selector */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                                Flair (optional)
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {FLAIRS.map((f) => (
+                                    <button
+                                        key={f}
+                                        type="button"
+                                        onClick={() => setFlair(flair === f ? null : f)}
+                                        className="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+                                        style={{
+                                            border: `1px solid ${flair === f ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
+                                            background: flair === f ? 'color-mix(in srgb, var(--brand-primary) 10%, transparent)' : 'transparent',
+                                            color: flair === f ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                                        }}
+                                    >
+                                        {f}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Title */}
+                        <div>
+                            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Title <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                maxLength={200}
+                                placeholder="What's on your mind?"
+                                className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2"
+                                style={{
+                                    border: '1px solid var(--border-subtle)',
+                                    background: 'var(--bg-lighter)',
+                                    color: 'var(--text-primary)',
+                                }}
+                            />
+                            <p className="text-xs mt-1 text-right" style={{ color: 'var(--text-muted)' }}>{title.length}/200</p>
+                        </div>
+
+                        {/* Body */}
+                        <div>
+                            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Body (optional)
+                            </label>
+                            <textarea
+                                value={body}
+                                onChange={(e) => setBody(e.target.value)}
+                                maxLength={5000}
+                                rows={4}
+                                placeholder="Add more details..."
+                                className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 resize-none"
+                                style={{
+                                    border: '1px solid var(--border-subtle)',
+                                    background: 'var(--bg-lighter)',
+                                    color: 'var(--text-primary)',
+                                }}
+                            />
+                            <p className="text-xs mt-1 text-right" style={{ color: 'var(--text-muted)' }}>{body.length}/5000</p>
+                        </div>
+
+                        {/* Submit */}
+                        <button
+                            type="submit"
+                            disabled={!title.trim() || loading}
+                            className="w-full py-3.5 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm"
+                            style={{ background: 'var(--brand-primary)' }}
+                        >
+                            {loading ? 'Posting...' : 'Post'}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )
+    }
+
+    // Desktop: centered modal (unchanged)
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
@@ -64,7 +207,6 @@ export default function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePos
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    {/* Error banner */}
                     {error && (
                         <div className="flex items-start gap-2 p-3 rounded-lg"
                             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>

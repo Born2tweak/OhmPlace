@@ -334,38 +334,105 @@ function MessagesContent() {
                             </Link>
                         </div>
                     ) : (
-                        filteredConversations.map((convo) => (
-                            <button
-                                key={convo.id}
-                                onClick={() => {
-                                    setSelectedConvoId(convo.id)
-                                    setMobileShowChat(true)
-                                }}
-                                className="w-full flex items-start gap-3 p-4 transition-colors text-left border-l-2"
-                                style={{
-                                    background: selectedConvoId === convo.id ? 'var(--bg-lighter)' : 'transparent',
-                                    borderLeftColor: selectedConvoId === convo.id ? 'var(--brand-primary)' : 'transparent',
-                                }}
-                            >
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                                    style={{ background: 'var(--brand-primary)' }}>
-                                    {convo.other_user?.full_name?.charAt(0) || '?'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                                            {convo.other_user?.full_name || `User ${convo.other_user?.id.slice(0, 4)}`}
-                                        </span>
-                                        <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>
-                                            {new Date(convo.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                        filteredConversations.map((convo) => {
+                            const handleSwipeStart = (e: React.TouchEvent<HTMLDivElement>) => {
+                                const el = e.currentTarget;
+                                (el as any)._startX = e.touches[0].clientX;
+                                (el as any)._startY = e.touches[0].clientY;
+                                (el as any)._swiping = false;
+                            }
+                            const handleSwipeMove = (e: React.TouchEvent<HTMLDivElement>) => {
+                                const el = e.currentTarget;
+                                const startX = (el as any)._startX;
+                                const startY = (el as any)._startY;
+                                if (startX == null) return;
+                                const diffX = e.touches[0].clientX - startX;
+                                const diffY = e.touches[0].clientY - startY;
+                                // Only swipe if horizontal
+                                if (Math.abs(diffX) > Math.abs(diffY) && diffX < 0) {
+                                    (el as any)._swiping = true;
+                                    const clamped = Math.max(diffX, -80);
+                                    const inner = el.querySelector('[data-swipe-inner]') as HTMLElement;
+                                    if (inner) {
+                                        inner.style.transform = `translateX(${clamped}px)`;
+                                        inner.style.transition = 'none';
+                                    }
+                                }
+                            }
+                            const handleSwipeEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+                                const el = e.currentTarget;
+                                const startX = (el as any)._startX;
+                                if (startX == null) return;
+                                const diffX = e.changedTouches[0].clientX - startX;
+                                const inner = el.querySelector('[data-swipe-inner]') as HTMLElement;
+                                if (inner) {
+                                    inner.style.transition = 'transform 0.3s ease';
+                                    inner.style.transform = diffX < -50 ? 'translateX(-72px)' : 'translateX(0px)';
+                                }
+                                (el as any)._startX = null;
+                            }
+
+                            return (
+                                <div
+                                    key={convo.id}
+                                    className="relative overflow-hidden"
+                                    onTouchStart={handleSwipeStart}
+                                    onTouchMove={handleSwipeMove}
+                                    onTouchEnd={handleSwipeEnd}
+                                >
+                                    {/* Swipe-reveal action */}
+                                    <div className="absolute right-0 top-0 bottom-0 w-[72px] flex items-center justify-center bg-red-500 text-white text-xs font-semibold"
+                                        onClick={() => {
+                                            // Archive (remove from local state)
+                                            setConversations(prev => prev.filter(c => c.id !== convo.id))
+                                            if (selectedConvoId === convo.id) {
+                                                setSelectedConvoId(null)
+                                                setMobileShowChat(false)
+                                            }
+                                        }}
+                                    >
+                                        Archive
                                     </div>
-                                    <p className="text-sm truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                                        {convo.last_message_text || 'Active now'}
-                                    </p>
+
+                                    {/* Conversation item */}
+                                    <div
+                                        data-swipe-inner
+                                        className="relative"
+                                        style={{ background: 'var(--bg-card)', transition: 'transform 0.3s ease' }}
+                                    >
+                                        <button
+                                            onClick={() => {
+                                                setSelectedConvoId(convo.id)
+                                                setMobileShowChat(true)
+                                            }}
+                                            className="w-full flex items-start gap-3 p-4 transition-colors text-left border-l-2"
+                                            style={{
+                                                background: selectedConvoId === convo.id ? 'var(--bg-lighter)' : 'transparent',
+                                                borderLeftColor: selectedConvoId === convo.id ? 'var(--brand-primary)' : 'transparent',
+                                            }}
+                                        >
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                                                style={{ background: 'var(--brand-primary)' }}>
+                                                {convo.other_user?.full_name?.charAt(0) || '?'}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                                                        {convo.other_user?.full_name || `User ${convo.other_user?.id.slice(0, 4)}`}
+                                                    </span>
+                                                    <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>
+                                                        {new Date(convo.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                                                    {convo.last_message_text || 'Active now'}
+                                                </p>
+                                            </div>
+                                        </button>
+                                    </div>
                                 </div>
-                            </button>
-                        ))
+                            )
+                        })
                     )}
                 </div>
             </div>

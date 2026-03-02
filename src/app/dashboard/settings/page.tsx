@@ -205,9 +205,32 @@ export default function SettingsPage() {
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Manage your account and preferences</p>
             </div>
 
+            {/* Mobile tab bar */}
+            <div className="flex lg:hidden overflow-x-auto gap-2 mb-4 -mx-1 px-1 pb-2 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+                {navItems.map(({ key, label, icon }) => (
+                    <button
+                        key={key}
+                        onClick={() => setActiveSection(key)}
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all shrink-0"
+                        style={{
+                            background: activeSection === key
+                                ? 'color-mix(in srgb, var(--brand-primary) 12%, transparent)'
+                                : 'var(--bg-lighter)',
+                            color: activeSection === key ? 'var(--brand-primary)' : 'var(--text-muted)',
+                            border: activeSection === key
+                                ? '1px solid color-mix(in srgb, var(--brand-primary) 25%, transparent)'
+                                : '1px solid var(--border-subtle)',
+                        }}
+                    >
+                        {icon}
+                        {label}
+                    </button>
+                ))}
+            </div>
+
             <div className="flex gap-6">
-                {/* Sidebar nav */}
-                <div className="w-52 shrink-0">
+                {/* Desktop sidebar nav — hidden on mobile */}
+                <div className="hidden lg:block w-52 shrink-0">
                     <nav className="space-y-1">
                         {navItems.map(({ key, label, icon, desc }) => (
                             <button

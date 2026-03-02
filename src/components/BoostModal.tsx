@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, Zap, Flame, Rocket, Loader2 } from 'lucide-react'
 
 interface BoostModalProps {
@@ -41,8 +41,29 @@ const TIERS = [
 export default function BoostModal({ isOpen, onClose, listingId, listingTitle }: BoostModalProps) {
     const [selectedTier, setSelectedTier] = useState<string>('3d')
     const [loading, setLoading] = useState(false)
+    const [closing, setClosing] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 1024)
+        check()
+        window.addEventListener('resize', check)
+        return () => window.removeEventListener('resize', check)
+    }, [])
 
     if (!isOpen) return null
+
+    const handleClose = () => {
+        if (isMobile) {
+            setClosing(true)
+            setTimeout(() => {
+                setClosing(false)
+                onClose()
+            }, 300)
+        } else {
+            onClose()
+        }
+    }
 
     const handleBoost = async () => {
         setLoading(true)
@@ -66,6 +87,121 @@ export default function BoostModal({ isOpen, onClose, listingId, listingTitle }:
         }
     }
 
+    // Bottom sheet on mobile
+    if (isMobile) {
+        return (
+            <div
+                className={`fixed inset-0 z-50 ${closing ? '' : 'bottom-sheet-overlay'}`}
+                style={{ background: 'rgba(0,0,0,0.5)' }}
+                onClick={handleClose}
+            >
+                <div
+                    className={`fixed bottom-0 left-0 right-0 rounded-t-2xl shadow-2xl max-h-[85vh] overflow-y-auto ${closing ? '' : 'bottom-sheet-content'}`}
+                    style={{
+                        background: 'var(--bg-card)',
+                        paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+                        animation: closing ? 'bottomSheetDown 0.3s ease-in forwards' : undefined,
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Drag handle */}
+                    <div className="flex justify-center pt-3 pb-1">
+                        <div className="w-10 h-1 rounded-full" style={{ background: 'var(--border-subtle)' }} />
+                    </div>
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-3"
+                        style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <div>
+                            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+                                ⚡ Boost Your Listing
+                            </h2>
+                            <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                {listingTitle}
+                            </p>
+                        </div>
+                        <button onClick={handleClose} className="p-1" style={{ color: 'var(--text-muted)' }}>
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Tiers */}
+                    <div className="p-5 space-y-3">
+                        {TIERS.map((tier) => {
+                            const Icon = tier.icon
+                            const isSelected = selectedTier === tier.key
+                            return (
+                                <button
+                                    key={tier.key}
+                                    onClick={() => setSelectedTier(tier.key)}
+                                    className="w-full flex items-center gap-4 p-4 rounded-xl transition-all text-left relative"
+                                    style={{
+                                        border: isSelected
+                                            ? `2px solid ${tier.color}`
+                                            : '2px solid var(--border-subtle)',
+                                        background: isSelected
+                                            ? `color-mix(in srgb, ${tier.color} 5%, var(--bg-card))`
+                                            : 'var(--bg-card)',
+                                    }}
+                                >
+                                    {tier.popular && (
+                                        <span className="absolute -top-2.5 right-3 text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                                            style={{ background: tier.color }}>
+                                            POPULAR
+                                        </span>
+                                    )}
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                                        style={{ background: `color-mix(in srgb, ${tier.color} 15%, transparent)` }}>
+                                        <Icon className="w-5 h-5" style={{ color: tier.color }} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                                {tier.label}
+                                            </span>
+                                            <span className="font-bold text-lg" style={{ color: tier.color }}>
+                                                {tier.price}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                            {tier.description}
+                                        </p>
+                                    </div>
+                                </button>
+                            )
+                        })}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-5 pb-5">
+                        <button
+                            onClick={handleBoost}
+                            disabled={loading}
+                            className="w-full py-3.5 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            style={{ background: 'var(--brand-primary)' }}
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Redirecting to checkout...
+                                </>
+                            ) : (
+                                <>
+                                    <Zap className="w-4 h-4" />
+                                    Boost Now
+                                </>
+                            )}
+                        </button>
+                        <p className="text-xs text-center mt-3" style={{ color: 'var(--text-muted)' }}>
+                            Secure payment via Stripe. Your listing will appear at the top of the marketplace.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Desktop: centered modal (unchanged)
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="rounded-xl shadow-xl w-full max-w-md overflow-hidden"
