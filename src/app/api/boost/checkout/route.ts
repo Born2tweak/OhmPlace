@@ -10,6 +10,12 @@ const BOOST_TIERS = {
     '24h': { hours: 24, price: 99, label: '24 Hours' },
     '3d': { hours: 72, price: 199, label: '3 Days' },
     '7d': { hours: 168, price: 399, label: '7 Days' },
+} as const
+
+type BoostTier = keyof typeof BOOST_TIERS
+
+function isValidTier(tier: string): tier is BoostTier {
+    return tier in BOOST_TIERS
 }
 
 export async function POST(request: NextRequest) {
@@ -18,14 +24,26 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { listingId, tier } = body as { listingId: string; tier: keyof typeof BOOST_TIERS }
+    let body: unknown
+    try {
+        body = await request.json()
+    } catch {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
 
-    if (!listingId || !tier || !BOOST_TIERS[tier]) {
+    const { listingId, tier } = (body as Record<string, unknown>) ?? {}
+
+    if (
+        typeof listingId !== 'string' || !listingId.trim() ||
+        typeof tier !== 'string' || !isValidTier(tier)
+    ) {
         return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
     const boostTier = BOOST_TIERS[tier]
+
+    // Use a trusted base URL from env to prevent open-redirect
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
     try {
         const session = await stripe.checkout.sessions.create({
@@ -44,8 +62,8 @@ export async function POST(request: NextRequest) {
                 },
             ],
             mode: 'payment',
-            success_url: `${request.headers.get('origin')}/dashboard/my-listings?boosted=true`,
-            cancel_url: `${request.headers.get('origin')}/dashboard/my-listings`,
+            success_url: `${appUrl}/dashboard/my-listings?boosted=true`,
+            cancel_url: `${appUrl}/dashboard/my-listings`,
             metadata: {
                 listing_id: listingId,
                 user_id: user.userId,

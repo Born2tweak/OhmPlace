@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase/server'
+
+const UpdateProfileSchema = z.object({
+    username: z.string().min(1).max(100).optional(),
+    bio: z.string().max(500).optional(),
+    major: z.string().max(100).optional(),
+    year: z.string().max(20).optional(),
+})
 
 export async function GET() {
     const user = await getAuthenticatedUser()
@@ -14,7 +22,8 @@ export async function GET() {
         .single()
 
     if (error && error.code !== 'PGRST116') {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        console.error('Failed to fetch profile:', error)
+        return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -33,17 +42,31 @@ export async function PATCH(req: NextRequest) {
     const user = await getAuthenticatedUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = await req.json()
+    let rawBody: unknown
+    try {
+        rawBody = await req.json()
+    } catch {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    const parsed = UpdateProfileSchema.safeParse(rawBody)
+    if (!parsed.success) {
+        return NextResponse.json(
+            { error: parsed.error.issues[0]?.message || 'Invalid input' },
+            { status: 400 }
+        )
+    }
+
+    const body = parsed.data
     const supabase = getSupabase()
 
     // Build update object — only include columns that exist
-    // full_name maps to username; bio/major/year are new columns (may not exist yet)
     const updates: Record<string, string> = {
         full_name: body.username ?? user.username,
         updated_at: new Date().toISOString(),
     }
 
-    // Only add extended fields if they were provided (will silently fail if cols missing)
+    // Only add extended fields if they were provided
     if (body.bio !== undefined) updates.bio = body.bio
     if (body.major !== undefined) updates.major = body.major
     if (body.year !== undefined) updates.year = body.year
@@ -72,10 +95,14 @@ export async function PATCH(req: NextRequest) {
                 .select()
                 .single()
 
-            if (fallback.error) return NextResponse.json({ error: fallback.error.message }, { status: 500 })
+            if (fallback.error) {
+                console.error('Failed to update profile (fallback):', fallback.error)
+                return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
+            }
             return NextResponse.json({ ...fallback.data, needs_migration: true })
         }
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        console.error('Failed to update profile:', error)
+        return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
     }
 
     return NextResponse.json(data)

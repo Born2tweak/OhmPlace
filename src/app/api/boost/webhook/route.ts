@@ -22,8 +22,7 @@ export async function POST(request: NextRequest) {
             sig,
             process.env.STRIPE_WEBHOOK_SECRET!
         )
-    } catch (err) {
-        console.error('Webhook signature verification failed:', err)
+    } catch {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
@@ -47,10 +46,8 @@ export async function POST(request: NextRequest) {
 
             if (error) {
                 console.error('Failed to update listing promotion:', error)
-                return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
+                return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
             }
-
-            console.log(`Listing ${listingId} promoted until ${promotedUntil}`)
         }
     }
 

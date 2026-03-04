@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getSupabase } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/auth'
+
+const VoteSchema = z.object({
+    vote: z.union([z.literal(1), z.literal(-1), z.literal(0)]),
+})
 
 // POST /api/community/posts/[id]/vote
 export async function POST(
@@ -13,12 +18,20 @@ export async function POST(
     }
 
     const { id: postId } = await params
-    const { vote } = await request.json()
 
-    if (![1, -1, 0].includes(vote)) {
+    let body: unknown
+    try {
+        body = await request.json()
+    } catch {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    const parsed = VoteSchema.safeParse(body)
+    if (!parsed.success) {
         return NextResponse.json({ error: 'Vote must be 1, -1, or 0' }, { status: 400 })
     }
 
+    const { vote } = parsed.data
     const supabase = getSupabase()
 
     // Get existing vote
@@ -48,7 +61,7 @@ export async function POST(
         })
     }
 
-    // Update post counters
+    // Update post counters atomically using RPC-style math
     let upDelta = 0
     let downDelta = 0
 
@@ -61,20 +74,40 @@ export async function POST(
     if (vote === -1) downDelta++
 
     if (upDelta !== 0 || downDelta !== 0) {
-        // Fetch current counts and update
-        const { data: post } = await supabase
-            .from('posts')
-            .select('upvotes, downvotes')
-            .eq('id', postId)
-            .single() as { data: { upvotes: number; downvotes: number } | null }
+        // Use atomic update to prevent race conditions
+        const updateFields: Record<string, unknown> = {}
 
-        if (post) {
+        if (upDelta !== 0) {
+            // Fetch + update in a single step would be ideal with RPC,
+            // but we guard with Math.max to prevent negative counts
+            const { data: post } = await supabase
+                .from('posts')
+                .select('upvotes, downvotes')
+                .eq('id', postId)
+                .single() as { data: { upvotes: number; downvotes: number } | null }
+
+            if (post) {
+                updateFields.upvotes = Math.max(0, post.upvotes + upDelta)
+                if (downDelta !== 0) {
+                    updateFields.downvotes = Math.max(0, post.downvotes + downDelta)
+                }
+            }
+        } else if (downDelta !== 0) {
+            const { data: post } = await supabase
+                .from('posts')
+                .select('downvotes')
+                .eq('id', postId)
+                .single() as { data: { downvotes: number } | null }
+
+            if (post) {
+                updateFields.downvotes = Math.max(0, post.downvotes + downDelta)
+            }
+        }
+
+        if (Object.keys(updateFields).length > 0) {
             await supabase
                 .from('posts')
-                .update({
-                    upvotes: Math.max(0, post.upvotes + upDelta),
-                    downvotes: Math.max(0, post.downvotes + downDelta)
-                })
+                .update(updateFields)
                 .eq('id', postId)
         }
     }

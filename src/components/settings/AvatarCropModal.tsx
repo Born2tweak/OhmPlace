@@ -79,7 +79,6 @@ export default function AvatarCropModal({ imageUrl, isOpen, onClose, onSave }: A
         setError(null)
         try {
             const blob = await getCroppedImg(imageUrl, croppedArea)
-            console.log('[crop] Blob created, size:', blob.size, 'type:', blob.type)
             await onSave(blob)
         } catch (err) {
             console.error('[crop] Error:', err)

@@ -175,9 +175,7 @@ function MessagesContent() {
                 table: 'conversations',
                 filter: `participant_2=eq.${user.id}`
             }, () => fetchConversations())
-            .subscribe((status) => {
-                console.log('[Realtime] conversations channel:', status)
-            })
+            .subscribe()
 
         return () => {
             supabase.removeChannel(channel)
@@ -214,12 +212,9 @@ function MessagesContent() {
                 table: 'messages',
                 filter: `conversation_id=eq.${selectedConvoId}`
             }, (payload) => {
-                console.log('[Realtime] new message received:', payload.new)
                 setMessages(prev => [...prev, payload.new as Message])
             })
-            .subscribe((status) => {
-                console.log('[Realtime] messages channel:', status)
-            })
+            .subscribe()
 
         return () => {
             supabase.removeChannel(channel)

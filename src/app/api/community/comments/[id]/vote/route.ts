@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getSupabase } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/auth'
+
+const VoteSchema = z.object({
+    vote: z.union([z.literal(1), z.literal(-1), z.literal(0)]),
+})
 
 // POST /api/community/comments/[id]/vote
 export async function POST(
@@ -13,12 +18,20 @@ export async function POST(
     }
 
     const { id: commentId } = await params
-    const { vote } = await request.json()
 
-    if (![1, -1, 0].includes(vote)) {
+    let body: unknown
+    try {
+        body = await request.json()
+    } catch {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    const parsed = VoteSchema.safeParse(body)
+    if (!parsed.success) {
         return NextResponse.json({ error: 'Vote must be 1, -1, or 0' }, { status: 400 })
     }
 
+    const { vote } = parsed.data
     const supabase = getSupabase()
 
     // Get existing vote

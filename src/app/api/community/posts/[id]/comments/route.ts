@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getSupabase } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/auth'
+
+const CommentSchema = z.object({
+    body: z.string().min(1, 'Comment is required').max(2000, 'Comment too long (max 2000 chars)'),
+    parent_id: z.string().uuid().optional().nullable(),
+})
 
 // POST /api/community/posts/[id]/comments
 export async function POST(
@@ -13,12 +19,23 @@ export async function POST(
     }
 
     const { id: postId } = await params
-    const { body, parent_id } = await request.json()
 
-    if (!body || body.length > 2000) {
-        return NextResponse.json({ error: 'Comment is required (max 2000 chars)' }, { status: 400 })
+    let rawBody: unknown
+    try {
+        rawBody = await request.json()
+    } catch {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
 
+    const parsed = CommentSchema.safeParse(rawBody)
+    if (!parsed.success) {
+        return NextResponse.json(
+            { error: parsed.error.issues[0]?.message || 'Invalid input' },
+            { status: 400 }
+        )
+    }
+
+    const { body, parent_id } = parsed.data
     const supabase = getSupabase()
 
     // Verify post exists
@@ -60,7 +77,8 @@ export async function POST(
         .single() as { data: Record<string, unknown> | null; error: { message: string } | null }
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        console.error('Failed to create comment:', error)
+        return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 })
     }
 
     // Increment comment count

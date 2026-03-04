@@ -13,6 +13,11 @@ export async function GET(
     }
 
     const { id } = await params
+
+    if (!id || typeof id !== 'string') {
+        return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 })
+    }
+
     const supabase = getSupabase()
 
     // Get the post
@@ -95,6 +100,11 @@ export async function DELETE(
     }
 
     const { id } = await params
+
+    if (!id || typeof id !== 'string') {
+        return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 })
+    }
+
     const supabase = getSupabase()
 
     // Verify ownership
@@ -111,7 +121,8 @@ export async function DELETE(
     const { error } = await supabase.from('posts').delete().eq('id', id)
 
     if (error) {
-        return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+        console.error('Failed to delete post:', error)
+        return NextResponse.json({ error: 'Failed to delete post' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

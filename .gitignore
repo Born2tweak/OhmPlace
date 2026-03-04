@@ -52,3 +52,7 @@ build_log.txt
 build_error.log
 # clerk configuration (can include secrets)
 /.clerk/
+
+# AI agent config (local only)
+.agent/
+.gemini/

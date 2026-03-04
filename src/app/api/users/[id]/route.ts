@@ -14,6 +14,10 @@ export async function GET(
 
     const { id } = await params
 
+    if (!id || typeof id !== 'string') {
+        return new NextResponse('Invalid user ID', { status: 400 })
+    }
+
     try {
         const client = await clerkClient()
         const user = await client.users.getUser(id)
@@ -28,7 +32,7 @@ export async function GET(
             avatar_url: profile?.avatar_url || user.imageUrl,
         })
     } catch (error) {
-        console.error('Error fetching user from Clerk:', error)
+        console.error('Error fetching user:', error)
         return new NextResponse('User not found', { status: 404 })
     }
 }
