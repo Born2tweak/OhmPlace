@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      { hostname: 'fvboileebqrtghzxrkcg.supabase.co' },
+      { hostname: '*.supabase.co' },
+      { hostname: 'img.clerk.com' },
+    ],
+  },
   async headers() {
     return [
       {

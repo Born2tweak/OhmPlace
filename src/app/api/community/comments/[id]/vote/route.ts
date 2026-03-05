@@ -67,20 +67,30 @@ export async function POST(
     if (vote === -1) downDelta++
 
     if (upDelta !== 0 || downDelta !== 0) {
-        const { data: comment } = await supabase
-            .from('comments')
-            .select('upvotes, downvotes')
-            .eq('id', commentId)
-            .single() as { data: { upvotes: number; downvotes: number } | null }
+        // Atomic increment via RPC to prevent race conditions
+        const { error: rpcError } = await supabase.rpc('increment_comment_votes', {
+            p_comment_id: commentId,
+            p_up_delta: upDelta,
+            p_down_delta: downDelta
+        })
 
-        if (comment) {
-            await supabase
+        if (rpcError) {
+            // Fallback if RPC not deployed yet
+            const { data: comment } = await supabase
                 .from('comments')
-                .update({
-                    upvotes: Math.max(0, comment.upvotes + upDelta),
-                    downvotes: Math.max(0, comment.downvotes + downDelta)
-                })
+                .select('upvotes, downvotes')
                 .eq('id', commentId)
+                .single() as { data: { upvotes: number; downvotes: number } | null }
+
+            if (comment) {
+                await supabase
+                    .from('comments')
+                    .update({
+                        upvotes: Math.max(0, comment.upvotes + upDelta),
+                        downvotes: Math.max(0, comment.downvotes + downDelta)
+                    })
+                    .eq('id', commentId)
+            }
         }
     }
 

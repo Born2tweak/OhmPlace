@@ -74,12 +74,15 @@ export async function POST(
     if (vote === -1) downDelta++
 
     if (upDelta !== 0 || downDelta !== 0) {
-        // Use atomic update to prevent race conditions
-        const updateFields: Record<string, unknown> = {}
+        // Atomic increment via RPC to prevent race conditions
+        const { error: rpcError } = await supabase.rpc('increment_post_votes', {
+            p_post_id: postId,
+            p_up_delta: upDelta,
+            p_down_delta: downDelta
+        })
 
-        if (upDelta !== 0) {
-            // Fetch + update in a single step would be ideal with RPC,
-            // but we guard with Math.max to prevent negative counts
+        if (rpcError) {
+            // Fallback if RPC not deployed yet
             const { data: post } = await supabase
                 .from('posts')
                 .select('upvotes, downvotes')
@@ -87,28 +90,14 @@ export async function POST(
                 .single() as { data: { upvotes: number; downvotes: number } | null }
 
             if (post) {
-                updateFields.upvotes = Math.max(0, post.upvotes + upDelta)
-                if (downDelta !== 0) {
-                    updateFields.downvotes = Math.max(0, post.downvotes + downDelta)
-                }
+                await supabase
+                    .from('posts')
+                    .update({
+                        upvotes: Math.max(0, post.upvotes + upDelta),
+                        downvotes: Math.max(0, post.downvotes + downDelta)
+                    })
+                    .eq('id', postId)
             }
-        } else if (downDelta !== 0) {
-            const { data: post } = await supabase
-                .from('posts')
-                .select('downvotes')
-                .eq('id', postId)
-                .single() as { data: { downvotes: number } | null }
-
-            if (post) {
-                updateFields.downvotes = Math.max(0, post.downvotes + downDelta)
-            }
-        }
-
-        if (Object.keys(updateFields).length > 0) {
-            await supabase
-                .from('posts')
-                .update(updateFields)
-                .eq('id', postId)
         }
     }
 

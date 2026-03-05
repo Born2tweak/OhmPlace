@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -8,6 +8,8 @@ import { Settings, LogOut, ShoppingBag, LayoutDashboard, Store, Users, MessageSq
 import { useClerk } from '@clerk/nextjs'
 import { useTheme } from '@/components/ThemeProvider'
 import { ToastProvider } from '@/components/Toast'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({
     children
@@ -20,15 +22,13 @@ export default function DashboardLayout({
     const { theme, setTheme } = useTheme()
     const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
     const [tappedNav, setTappedNav] = useState<string | null>(null)
+    const supabase = useMemo(() => createClient(), [])
 
     // Sync profile to Supabase on load
     useEffect(() => {
         if (!user) return
 
         const syncProfile = async () => {
-            const { createClient } = await import('@/lib/supabase/client')
-            const supabase = createClient()
-
             const { data: existing } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
             const finalAvatarUrl = existing?.avatar_url || user.imageUrl
 
@@ -38,7 +38,7 @@ export default function DashboardLayout({
                 full_name: user.fullName,
                 avatar_url: finalAvatarUrl,
                 updated_at: new Date().toISOString()
-            })
+            }, { onConflict: 'id' })
 
             setProfileAvatar(finalAvatarUrl)
         }
@@ -148,7 +148,9 @@ export default function DashboardLayout({
                     {/* Main Content — page transition on route change */}
                     <main className="lg:col-span-3">
                         <div key={pathname} className="page-transition">
-                            <ToastProvider>{children}</ToastProvider>
+                            <ErrorBoundary>
+                                <ToastProvider>{children}</ToastProvider>
+                            </ErrorBoundary>
                         </div>
                     </main>
                 </div>
