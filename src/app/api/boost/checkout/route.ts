@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getAuthenticatedUser } from '@/lib/auth'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2026-02-25.clover'
-})
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 const BOOST_TIERS = {
     '24h': { hours: 24, price: 99, label: '24 Hours' },
