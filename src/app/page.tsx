@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Sun, Moon } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
     const { user, isLoaded, isSignedIn } = useUser()
@@ -12,15 +13,18 @@ export default function Home() {
     const [eduError, setEduError] = useState(false)
     const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
     const { theme, setTheme } = useTheme()
+    const router = useRouter()
 
     useEffect(() => {
         if (isSignedIn && user?.primaryEmailAddress?.emailAddress) {
             const email = user.primaryEmailAddress.emailAddress
             if (!/@.+\.edu$/i.test(email)) {
                 setEduError(true)
+            } else {
+                router.push('/dashboard')
             }
         }
-    }, [isSignedIn, user])
+    }, [isSignedIn, user, router])
 
     const getCampus = (email: string | undefined): string => {
         if (!email) return ''
