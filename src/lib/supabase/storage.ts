@@ -93,3 +93,39 @@ export async function deleteAllListingImages(listingId: string): Promise<void> {
         throw new Error('Failed to delete images')
     }
 }
+
+export async function uploadPostImage(
+    file: File,
+    postId: string
+): Promise<string> {
+    if (file.size > MAX_FILE_SIZE) {
+        throw new Error('File size must be less than 5MB')
+    }
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+        throw new Error('Only JPEG, PNG, and WebP images are allowed')
+    }
+
+    const supabase = createClient()
+
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${postId}/${crypto.randomUUID()}.${fileExt}`
+
+    const { data, error } = await supabase.storage
+        .from('post-images')
+        .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+        })
+
+    if (error) {
+        console.error('Upload error:', error)
+        throw new Error('Failed to upload image')
+    }
+
+    const {
+        data: { publicUrl }
+    } = supabase.storage.from('post-images').getPublicUrl(data.path)
+
+    return publicUrl
+}

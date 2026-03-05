@@ -15,6 +15,7 @@ interface Post {
     title: string
     body: string | null
     flair: string | null
+    image_url: string | null
     upvotes: number
     downvotes: number
     comment_count: number
@@ -95,9 +96,21 @@ export default function PostCard({ post, currentUserId, onVote, onDelete, index 
 
                 {/* Body preview */}
                 {post.body && (
-                    <p className="text-sm mb-4 line-clamp-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-sm mb-3 line-clamp-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                         {post.body}
                     </p>
+                )}
+
+                {/* Post image */}
+                {post.image_url && (
+                    <div className="rounded-xl overflow-hidden mb-3" style={{ border: '1px solid var(--border-subtle)' }}>
+                        <img
+                            src={post.image_url}
+                            alt="Post image"
+                            className="w-full max-h-80 object-cover"
+                            loading="lazy"
+                        />
+                    </div>
                 )}
 
                 {/* Action bar */}

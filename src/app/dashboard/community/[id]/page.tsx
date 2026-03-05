@@ -30,6 +30,7 @@ interface PostDetail {
     title: string
     body: string | null
     flair: string | null
+    image_url: string | null
     upvotes: number
     downvotes: number
     comment_count: number
@@ -232,6 +233,18 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 {/* Body */}
                 {post.body && (
                     <p className="whitespace-pre-wrap mb-4 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{post.body}</p>
+                )}
+
+                {/* Post image */}
+                {post.image_url && (
+                    <div className="rounded-xl overflow-hidden mb-4" style={{ border: '1px solid var(--border-subtle)' }}>
+                        <img
+                            src={post.image_url}
+                            alt="Post image"
+                            className="w-full object-contain max-h-[500px]"
+                            loading="lazy"
+                        />
+                    </div>
                 )}
 
                 {/* Action bar */}

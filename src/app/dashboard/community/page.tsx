@@ -17,6 +17,7 @@ interface Post {
     title: string
     body: string | null
     flair: string | null
+    image_url: string | null
     upvotes: number
     downvotes: number
     comment_count: number
@@ -52,7 +53,7 @@ export default function CommunityPage() {
         fetchPosts()
     }, [fetchPosts])
 
-    const handleCreatePost = async (data: { title: string; body: string; flair: string | null }) => {
+    const handleCreatePost = async (data: { title: string; body: string; flair: string | null; image_url?: string | null }) => {
         const res = await fetch('/api/community/posts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
