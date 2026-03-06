@@ -76,11 +76,11 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
 
         setMessaging(true)
 
-        // Fetch Clerk JWT for Supabase RLS
-        const token = await session?.getToken({ template: 'supabase' })
-        const supabase = createClient(token || undefined)
-
         try {
+            // Fetch Clerk JWT for Supabase RLS
+            const token = await session?.getToken({ template: 'supabase' })
+            const supabase = createClient(token || undefined)
+
             // Check for existing conversation (bidirectional check)
             const { data: c1, error: e1 } = await supabase
                 .from('conversations')
