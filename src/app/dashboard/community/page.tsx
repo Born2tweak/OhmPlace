@@ -104,7 +104,7 @@ export default function CommunityPage() {
 
     return (
         <PullToRefresh onRefresh={fetchPosts}>
-            <div className="space-y-4">
+            <div className="max-w-3xl mx-auto space-y-4">
                 {/* Community header */}
                 <div className="glass rounded-2xl p-4 sm:p-5">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

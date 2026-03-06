@@ -128,30 +128,33 @@ export default function PostCard({ post, currentUserId, onVote, onDelete, index 
                         <span>{post.comment_count}</span>
                     </div>
 
-                    <button
-                        onClick={handleShare}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors"
-                        style={{ color: 'var(--text-muted)' }}
-                    >
-                        <Share2 className="w-3.5 h-3.5" />
-                        <span>Share</span>
-                    </button>
-
-                    {isOwner && onDelete && (
+                    <div className="flex items-center gap-1 ml-auto">
                         <button
-                            onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                onDelete(post.id)
-                            }}
-                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ml-auto"
+                            onClick={handleShare}
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                             style={{ color: 'var(--text-muted)' }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'color-mix(in srgb, #ef4444 10%, transparent)' }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
                         >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Share2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Share</span>
                         </button>
-                    )}
+
+                        {isOwner && onDelete && (
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    onDelete(post.id)
+                                }}
+                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: 'var(--text-muted)' }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'color-mix(in srgb, #ef4444 10%, transparent)' }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
+                                title="Delete post"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </Link>
