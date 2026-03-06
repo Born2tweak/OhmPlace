@@ -167,6 +167,7 @@ export default function Home() {
                                         <div className="w-full">
                                             {mode === 'sign-up' ? (
                                                 <SignUp
+                                                    routing="hash"
                                                     forceRedirectUrl="/dashboard"
                                                     appearance={{
                                                         elements: {
@@ -198,6 +199,7 @@ export default function Home() {
                                                 />
                                             ) : (
                                                 <SignIn
+                                                    routing="hash"
                                                     forceRedirectUrl="/dashboard"
                                                     appearance={{
                                                         elements: {
