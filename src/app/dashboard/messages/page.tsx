@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, Suspense } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { useUser, useSession } from '@clerk/nextjs'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag } from 'lucide-react'
@@ -46,10 +46,12 @@ function StatusIcon({ status }: { status?: MessageStatus }) {
 
 function MessagesContent() {
     const { user, isLoaded } = useUser()
+    const { session } = useSession()
     const searchParams = useSearchParams()
     const router = useRouter()
-    const supabase = useMemo(() => createClient(), [])
     const { toast } = useToast()
+
+    const [supabase, setSupabase] = useState<any>(null)
 
     // State
     const [conversations, setConversations] = useState<Conversation[]>([])
@@ -63,9 +65,30 @@ function MessagesContent() {
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
+    // Initialize Supabase Client with Clerk Token
+    useEffect(() => {
+        if (!isLoaded || !session) return;
+
+        let isMounted = true;
+        const initSupabase = async () => {
+            try {
+                const token = await session.getToken({ template: 'supabase' });
+                if (isMounted) {
+                    setSupabase(createClient(token || undefined));
+                }
+            } catch (err) {
+                console.error("Failed to fetch Clerk Supabase token:", err);
+                if (isMounted) toast("Authentication error. Please refresh.", "error");
+            }
+        };
+        initSupabase();
+
+        return () => { isMounted = false; };
+    }, [isLoaded, session]);
+
     // Initial load
     useEffect(() => {
-        if (!isLoaded || !user) return
+        if (!isLoaded || !user || !supabase) return
 
         const fetchConversations = async () => {
             setLoadingConvos(true)
@@ -80,7 +103,7 @@ function MessagesContent() {
             } else {
                 // 1. Get all participant IDs
                 const userIds = new Set<string>()
-                data.forEach(c => {
+                data.forEach((c: any) => {
                     userIds.add(c.participant_1)
                     userIds.add(c.participant_2)
                 })
@@ -91,12 +114,12 @@ function MessagesContent() {
                     .select('*')
                     .in('id', Array.from(userIds))
 
-                const profileMap = new Map(profiles?.map(p => [p.id, p]))
+                const profileMap = new Map(profiles?.map((p: any) => [p.id, p]))
 
                 // 3. Construct conversation objects
-                const enriched = data.map(c => {
+                const enriched = data.map((c: any) => {
                     const otherUserId = c.participant_1 === user.id ? c.participant_2 : c.participant_1
-                    const profile = profileMap.get(otherUserId)
+                    const profile = profileMap.get(otherUserId) as any
                     return {
                         ...c,
                         other_user: {
@@ -112,8 +135,8 @@ function MessagesContent() {
 
                 // 4. Fallback: Fetch missing profiles or avatars from API
                 const missingIds = enriched
-                    .filter(c => !c.other_user.full_name || !c.other_user.avatar_url)
-                    .map(c => c.other_user.id)
+                    .filter((c: any) => !c.other_user?.full_name || !c.other_user?.avatar_url)
+                    .map((c: any) => c.other_user?.id)
 
                 if (missingIds.length > 0) {
                     const uniqueMissing = Array.from(new Set(missingIds))
@@ -124,12 +147,12 @@ function MessagesContent() {
                                 const userData = await res.json()
 
                                 // Update local state for immediate feedback
-                                setConversations(prev => prev.map(c => {
+                                setConversations(prev => prev.map((c: any) => {
                                     if (c.other_user?.id === id) {
                                         return {
                                             ...c,
                                             other_user: {
-                                                id: id,
+                                                id: id as string,
                                                 email: userData.email,
                                                 full_name: userData.full_name,
                                                 avatar_url: userData.avatar_url
@@ -147,7 +170,7 @@ function MessagesContent() {
 
                 // 5. Handle selection
                 const paramId = searchParams.get('id')
-                if (paramId && enriched.find(c => c.id === paramId)) {
+                if (paramId && enriched.find((c: any) => c.id === paramId)) {
                     setSelectedConvoId(paramId)
                     setMobileShowChat(true)
                 } else if (enriched.length > 0 && !mobileShowChat) {
@@ -180,11 +203,11 @@ function MessagesContent() {
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [user, isLoaded])
+    }, [user, isLoaded, supabase])
 
     // Fetch messages when selected conversation changes
     useEffect(() => {
-        if (!selectedConvoId) return
+        if (!selectedConvoId || !supabase) return
 
         const fetchMessages = async () => {
             setLoadingMessages(true)
@@ -211,7 +234,7 @@ function MessagesContent() {
                 schema: 'public',
                 table: 'messages',
                 filter: `conversation_id=eq.${selectedConvoId}`
-            }, (payload) => {
+            }, (payload: any) => {
                 setMessages(prev => [...prev, payload.new as Message])
             })
             .subscribe()
@@ -223,7 +246,7 @@ function MessagesContent() {
 
     // Mark incoming messages as read when conversation is opened
     useEffect(() => {
-        if (!selectedConvoId || !user) return
+        if (!selectedConvoId || !user || !supabase) return
 
         const markAsRead = async () => {
             await supabase
@@ -276,9 +299,9 @@ function MessagesContent() {
         c.last_message_text?.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    const selectedConvo = conversations.find(c => c.id === selectedConvoId)
+    const selectedConvo = conversations.find((c: any) => c.id === selectedConvoId)
 
-    if (!isLoaded || loadingConvos) {
+    if (!isLoaded || !supabase || loadingConvos) {
         return (
             <div className="flex items-center justify-center h-[calc(100vh-160px)]">
                 <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-primary)' }} />

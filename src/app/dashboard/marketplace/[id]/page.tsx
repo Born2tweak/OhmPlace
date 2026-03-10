@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUser } from '@clerk/nextjs'
+import { useUser, useSession } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Truck, Loader2, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import type { Listing, ListingImage } from '@/types/database'
@@ -22,6 +22,7 @@ interface ListingWithImages extends Listing {
 export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
     const { user, isLoaded } = useUser()
+    const { session } = useSession()
     const router = useRouter()
     const [listing, setListing] = useState<ListingWithImages | null>(null)
     const [loading, setLoading] = useState(true)
@@ -74,9 +75,12 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
         }
 
         setMessaging(true)
-        const supabase = createClient()
 
         try {
+            // Fetch Clerk JWT for Supabase RLS
+            const token = await session?.getToken({ template: 'supabase' })
+            const supabase = createClient(token || undefined)
+
             // Check for existing conversation (bidirectional check)
             const { data: c1, error: e1 } = await supabase
                 .from('conversations')
