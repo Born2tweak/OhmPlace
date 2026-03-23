@@ -9,6 +9,7 @@ const CreatePostSchema = z.object({
     title: z.string().min(1, 'Title is required').max(200, 'Title too long (max 200 chars)'),
     body: z.string().max(5000, 'Body too long (max 5000 chars)').optional().nullable(),
     flair: z.enum(VALID_FLAIRS).optional().nullable(),
+    image_url: z.string().url().max(2000).optional().nullable(),
 })
 
 const SortSchema = z.enum(['new', 'best', 'hot']).default('new')
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
         )
     }
 
-    const { title, body: postBody, flair } = parsed.data
+    const { title, body: postBody, flair, image_url } = parsed.data
     const supabase = getSupabase()
 
     const { data, error } = await supabase
@@ -131,7 +132,8 @@ export async function POST(request: NextRequest) {
             campus: user.campus,
             title,
             body: postBody || null,
-            flair: flair || null
+            flair: flair || null,
+            image_url: image_url || null
         })
         .select()
         .single() as { data: Record<string, unknown> | null; error: { message: string } | null }

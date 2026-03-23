@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, use } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MessageSquare, Share2, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Share2, Trash2, Loader2, Mail } from 'lucide-react'
 import VoteButton from '@/components/community/VoteButton'
 import FlairBadge from '@/components/community/FlairBadge'
 import CommentSection from '@/components/community/CommentSection'
@@ -30,6 +30,7 @@ interface PostDetail {
     title: string
     body: string | null
     flair: string | null
+    image_url: string | null
     upvotes: number
     downvotes: number
     comment_count: number
@@ -62,6 +63,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     const router = useRouter()
     const [post, setPost] = useState<PostDetail | null>(null)
     const [loading, setLoading] = useState(true)
+    const [messagingAuthor, setMessagingAuthor] = useState(false)
     const { toast } = useToast()
 
     const fetchPost = useCallback(async () => {
@@ -234,6 +236,18 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                     <p className="whitespace-pre-wrap mb-4 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{post.body}</p>
                 )}
 
+                {/* Post image */}
+                {post.image_url && (
+                    <div className="rounded-xl overflow-hidden mb-4" style={{ border: '1px solid var(--border-subtle)' }}>
+                        <img
+                            src={post.image_url}
+                            alt="Post image"
+                            className="w-full object-contain max-h-[500px]"
+                            loading="lazy"
+                        />
+                    </div>
+                )}
+
                 {/* Action bar */}
                 <div className="flex items-center gap-3 pt-3" style={{ borderTop: '1px solid var(--bg-lighter)' }}>
                     <VoteButton
@@ -257,6 +271,39 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                         <Share2 className="w-4 h-4" />
                         Share
                     </button>
+
+                    {/* Message Author (hidden for own posts) */}
+                    {user && post.user_id !== user.id && (
+                        <button
+                            onClick={async () => {
+                                setMessagingAuthor(true)
+                                try {
+                                    const res = await fetch('/api/conversations', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ participantId: post.user_id }),
+                                    })
+                                    const data = await res.json()
+                                    if (!res.ok) throw new Error(data.error)
+                                    router.push(`/dashboard/messages?id=${data.conversationId}`)
+                                } catch (err: unknown) {
+                                    const message = err instanceof Error ? err.message : 'Failed to start conversation'
+                                    toast(message, 'error')
+                                    setMessagingAuthor(false)
+                                }
+                            }}
+                            disabled={messagingAuthor}
+                            className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full transition-colors disabled:opacity-50"
+                            style={{ color: 'var(--brand-primary)' }}
+                        >
+                            {messagingAuthor ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Mail className="w-4 h-4" />
+                            )}
+                            Message
+                        </button>
+                    )}
 
                     {isOwner && (
                         <button

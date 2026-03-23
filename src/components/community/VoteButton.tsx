@@ -14,10 +14,10 @@ interface VoteButtonProps {
 export default function VoteButton({ upvotes, downvotes, userVote, onVote, size = 'md' }: VoteButtonProps) {
     const score = upvotes - downvotes
     const iconSize = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5'
-    const padding = size === 'sm' ? 'px-1 py-0.5' : 'px-1.5 py-1'
+    const padding = size === 'sm' ? 'px-1.5 py-1' : 'px-2 py-1.5'
 
     return (
-        <div className="flex items-center gap-0.5 rounded-full"
+        <div className="flex items-center gap-1 rounded-full"
             style={{ background: 'var(--bg-lighter)' }}>
             <button
                 onClick={(e) => {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUser, useSession } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Loader2, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import type { Listing, ListingImage } from '@/types/database'
@@ -27,7 +27,6 @@ type CarouselTouchState = {
 export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
     const { user, isLoaded } = useUser()
-    const { session } = useSession()
     const router = useRouter()
     const [listing, setListing] = useState<ListingWithImages | null>(null)
     const [loading, setLoading] = useState(true)
@@ -76,57 +75,30 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
         if (!user || !listing) return
 
         if (user.id === listing.user_id) {
-            alert("You can't message yourself!")
+            toast("You can't message yourself!", 'error')
             return
         }
 
         setMessaging(true)
 
         try {
-            // Fetch Clerk JWT for Supabase RLS
-            const token = await session?.getToken({ template: 'supabase' })
-            const supabase = createClient(token || undefined)
+            const res = await fetch('/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participantId: listing.user_id }),
+            })
 
-            // Check for existing conversation (bidirectional check)
-            const { data: c1, error: e1 } = await supabase
-                .from('conversations')
-                .select('*')
-                .match({ participant_1: user.id, participant_2: listing.user_id })
-                .maybeSingle()
+            const data = await res.json()
 
-            const { data: c2, error: e2 } = await supabase
-                .from('conversations')
-                .select('*')
-                .match({ participant_1: listing.user_id, participant_2: user.id })
-                .maybeSingle()
-
-            if (e1 && e1.code !== 'PGRST116') throw e1
-            if (e2 && e2.code !== 'PGRST116') throw e2
-
-            let conversationId = c1?.id || c2?.id
-
-            if (!conversationId) {
-                // Create new conversation
-                const { data: newConvo, error: createError } = await supabase
-                    .from('conversations')
-                    .insert({
-                        participant_1: user.id,
-                        participant_2: listing.user_id,
-                        last_message_at: new Date().toISOString()
-                    })
-                    .select()
-                    .single()
-
-                if (createError) throw createError
-                conversationId = newConvo.id
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to start conversation')
             }
 
-            // Redirect to messages
-            router.push(`/dashboard/messages?id=${conversationId}`)
+            router.push(`/dashboard/messages?id=${data.conversationId}`)
         } catch (error: unknown) {
             console.error('Error starting conversation:', error)
-            const message = error instanceof Error ? error.message : JSON.stringify(error)
-            alert(`Failed to start conversation: ${message}`)
+            const message = error instanceof Error ? error.message : 'Failed to start conversation'
+            toast(message, 'error')
             setMessaging(false)
         }
     }

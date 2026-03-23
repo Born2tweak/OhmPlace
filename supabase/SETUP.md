@@ -50,6 +50,35 @@ TO public
 USING (bucket_id = 'listing-images');
 ```
 
+## 2b. Create Post Images Storage Bucket
+
+1. Navigate to **Storage** in Supabase dashboard
+2. Click **New bucket**
+3. Configure:
+   - **Name**: `post-images`
+   - **Public**: ✅ Enable (for public read access)
+   - **File size limit**: 5MB
+   - **Allowed MIME types**: `image/jpeg`, `image/png`, `image/webp`
+
+4. After creating the bucket, add policies (or run `supabase/migrations/20260310_post_images_bucket.sql`):
+
+```sql
+CREATE POLICY "Allow authenticated uploads to post-images"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'post-images');
+
+CREATE POLICY "Allow public read of post-images"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'post-images');
+
+CREATE POLICY "Allow users to delete own post-images"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'post-images');
+```
+
 ## 3. Verify Setup
 
 Run this query in SQL Editor to verify:

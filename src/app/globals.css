@@ -422,6 +422,10 @@ body {
   animation: pulseGlow 2s ease-in-out infinite;
 }
 
+.promoted-glow.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards, pulseGlow 2s 0.4s ease-in-out infinite;
+}
+
 .skeleton {
   background: linear-gradient(90deg,
       var(--bg-lighter) 25%,

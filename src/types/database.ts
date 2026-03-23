@@ -157,6 +157,7 @@ export type Database = {
                     upvotes: number
                     downvotes: number
                     comment_count: number
+                    image_url: string | null
                     created_at: string
                 }
                 Insert: {
@@ -170,6 +171,7 @@ export type Database = {
                     upvotes?: number
                     downvotes?: number
                     comment_count?: number
+                    image_url?: string | null
                     created_at?: string
                 }
                 Update: {
@@ -179,6 +181,7 @@ export type Database = {
                     upvotes?: number
                     downvotes?: number
                     comment_count?: number
+                    image_url?: string | null
                 }
             }
             post_votes: {

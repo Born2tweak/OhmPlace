@@ -2,7 +2,6 @@
 
 import { useUser, useClerk, SignIn, SignUp } from '@clerk/nextjs'
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Sun, Moon } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import { useRouter } from 'next/navigation'
@@ -18,7 +17,7 @@ export default function Home() {
 
     useEffect(() => {
         if (isSignedIn && email && !eduError) {
-            router.push('/dashboard')
+            router.replace('/dashboard')
         }
     }, [eduError, email, isSignedIn, router])
 
@@ -128,25 +127,14 @@ export default function Home() {
                                         <button onClick={() => signOut()} className="btn-primary w-full">Sign Out</button>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-8">
-                                        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                                            style={{ background: 'color-mix(in srgb, var(--brand-primary) 10%, transparent)' }}>
-                                            <svg className="w-8 h-8" style={{ color: 'var(--brand-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </div>
-                                        <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Welcome! 👋</h2>
-                                        <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>{user?.primaryEmailAddress?.emailAddress}</p>
-                                        <div className="space-y-3">
-                                            <Link href="/dashboard/my-listings" className="block w-full text-white py-3 px-6 rounded-lg font-medium transition-colors text-center"
-                                                style={{ background: 'var(--brand-primary)' }}>
-                                                View Dashboard
-                                            </Link>
-                                            <Link href="/dashboard/new-listing" className="block w-full py-3 px-6 rounded-lg font-medium transition-colors text-center"
-                                                style={{ border: '2px solid var(--brand-primary)', color: 'var(--brand-primary)' }}>
-                                                + Sell an Item
-                                            </Link>
-                                        </div>
+                                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                        <svg className="animate-spin h-8 w-8" style={{ color: 'var(--brand-primary)' }} fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                            Taking you to your dashboard...
+                                        </p>
                                     </div>
                                 )
                             ) : (

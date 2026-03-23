@@ -1,18 +1,15 @@
 'use client'
-
 import { useState, useRef, useEffect, Suspense } from 'react'
-import { useUser, useSession } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 import { useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag } from 'lucide-react'
+import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag, Plus, X, UserPlus } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import Link from 'next/link'
-import type { Conversation as ConversationRow, Message, Profile } from '@/types/database'
+import type { Conversation as ConversationRow, Message } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
 type MessageStatus = Message['status']
-type SupabaseBrowserClient = ReturnType<typeof createClient>
 type ConversationWithUser = ConversationRow & {
     other_user?: {
         id: string
@@ -21,8 +18,10 @@ type ConversationWithUser = ConversationRow & {
         avatar_url?: string
     }
 }
-type ConversationPayload = {
-    new: Message
+type SearchUserResult = {
+    id: string
+    full_name: string
+    avatar_url: string
 }
 type SwipeState = {
     startX: number | null
@@ -39,11 +38,9 @@ function StatusIcon({ status }: { status?: MessageStatus }) {
 
 function MessagesContent() {
     const { user, isLoaded } = useUser()
-    const { session } = useSession()
     const searchParams = useSearchParams()
     const { toast } = useToast()
 
-    const [supabase, setSupabase] = useState<SupabaseBrowserClient | null>(null)
     const [conversations, setConversations] = useState<ConversationWithUser[]>([])
     const [messages, setMessages] = useState<Message[]>([])
     const [loadingConvos, setLoadingConvos] = useState(true)
@@ -52,99 +49,38 @@ function MessagesContent() {
     const [messageInput, setMessageInput] = useState('')
     const [searchQuery, setSearchQuery] = useState('')
     const [mobileShowChat, setMobileShowChat] = useState(false)
+    const [showNewConvo, setShowNewConvo] = useState(false)
+    const [userSearchQuery, setUserSearchQuery] = useState('')
+    const [userSearchResults, setUserSearchResults] = useState<SearchUserResult[]>([])
+    const [searchingUsers, setSearchingUsers] = useState(false)
+    const [startingConvo, setStartingConvo] = useState(false)
 
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const swipeStateRef = useRef<Record<string, SwipeState>>({})
 
-    useEffect(() => {
-        if (!isLoaded || !session) return
+    const fetchConversations = async (): Promise<ConversationWithUser[]> => {
+        try {
+            const response = await fetch('/api/conversations')
+            if (!response.ok) throw new Error('Failed to fetch conversations')
 
-        let isMounted = true
-        const initSupabase = async () => {
-            try {
-                const token = await session.getToken({ template: 'supabase' })
-                if (isMounted) {
-                    setSupabase(createClient(token || undefined))
-                }
-            } catch (err) {
-                console.error('Failed to fetch Clerk Supabase token:', err)
-                if (isMounted) toast('Authentication error. Please refresh.', 'error')
-            }
-        }
+            const data = await response.json() as ConversationWithUser[]
+            setConversations(data)
 
-        void initSupabase()
-        return () => {
-            isMounted = false
-        }
-    }, [isLoaded, session, toast])
-
-    useEffect(() => {
-        if (!isLoaded || !user || !supabase) return
-
-        const fetchConversations = async () => {
-            setLoadingConvos(true)
-
-            const { data, error } = await supabase
-                .from('conversations')
-                .select('*')
-                .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
-                .order('last_message_at', { ascending: false })
-
-            if (error || !data) {
-                console.error('Error fetching conversations:', error)
-                setLoadingConvos(false)
-                return
-            }
-
-            const userIds = new Set<string>()
-            data.forEach((conversation) => {
-                userIds.add(conversation.participant_1)
-                userIds.add(conversation.participant_2)
-            })
-
-            const { data: profiles } = await supabase
-                .from('profiles')
-                .select('*')
-                .in('id', Array.from(userIds))
-
-            const profileMap = new Map<string, Profile>(
-                (profiles || []).map((profile) => [profile.id, profile])
-            )
-
-            const enriched: ConversationWithUser[] = data.map((conversation) => {
-                const otherUserId = conversation.participant_1 === user.id
-                    ? conversation.participant_2
-                    : conversation.participant_1
-                const profile = profileMap.get(otherUserId)
-
-                return {
-                    ...conversation,
-                    other_user: {
-                        id: otherUserId,
-                        email: profile?.email || 'user@campus.edu',
-                        full_name: profile?.full_name || undefined,
-                        avatar_url: profile?.avatar_url || undefined
-                    }
-                }
-            })
-
-            setConversations(enriched)
-
-            const missingIds = Array.from(
-                new Set(
-                    enriched
-                        .filter((conversation) => !conversation.other_user?.full_name || !conversation.other_user?.avatar_url)
-                        .map((conversation) => conversation.other_user?.id)
-                        .filter((id): id is string => Boolean(id))
-                )
-            )
+            const missingIds = Array.from(new Set(
+                data
+                    .filter((conversation) => !conversation.other_user?.full_name || !conversation.other_user?.avatar_url)
+                    .map((conversation) => conversation.other_user?.id)
+                    .filter((id): id is string => Boolean(id))
+            ))
 
             await Promise.all(missingIds.map(async (id) => {
                 try {
-                    const response = await fetch(`/api/users/${id}`)
-                    if (!response.ok) return
+                    const res = await fetch(`/api/users/${id}`)
+                    if (!res.ok) return
 
-                    const userData = await response.json() as {
+                    const userData = await res.json() as {
                         email?: string
                         full_name?: string
                         avatar_url?: string
@@ -168,127 +104,167 @@ function MessagesContent() {
                 }
             }))
 
-            const paramId = searchParams.get('id')
-            if (paramId && enriched.some((conversation) => conversation.id === paramId)) {
-                setSelectedConvoId(paramId)
-                setMobileShowChat(true)
-            } else if (enriched.length > 0 && !mobileShowChat && window.innerWidth >= 768) {
-                setSelectedConvoId(enriched[0].id)
-            }
-
-            setLoadingConvos(false)
+            return data
+        } catch (err) {
+            console.error('Error fetching conversations:', err)
+            return []
         }
+    }
 
-        void fetchConversations()
+    const fetchMessages = async (conversationId: string) => {
+        try {
+            const response = await fetch(`/api/conversations/${conversationId}/messages`)
+            if (!response.ok) throw new Error('Failed to fetch messages')
 
-        const channel = supabase
-            .channel('conversations')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'conversations',
-                filter: `participant_1=eq.${user.id}`
-            }, () => { void fetchConversations() })
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'conversations',
-                filter: `participant_2=eq.${user.id}`
-            }, () => { void fetchConversations() })
-            .subscribe()
-
-        return () => {
-            void supabase.removeChannel(channel)
+            const data = await response.json() as Message[]
+            setMessages(data)
+        } catch (err) {
+            console.error('Error fetching messages:', err)
         }
-    }, [user, isLoaded, supabase, mobileShowChat, searchParams])
+    }
 
     useEffect(() => {
-        if (!selectedConvoId || !supabase) return
+        if (!isLoaded || !user) return
 
-        const fetchMessages = async () => {
-            setLoadingMessages(true)
-            const { data, error } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('conversation_id', selectedConvoId)
-                .order('created_at', { ascending: true })
+        const init = async () => {
+            setLoadingConvos(true)
+            const data = await fetchConversations()
+            setLoadingConvos(false)
 
-            if (error || !data) {
-                console.error('Error fetching messages:', error)
-            } else {
-                setMessages(data)
+            const paramId = searchParams.get('id')
+            if (paramId && data.some((conversation) => conversation.id === paramId)) {
+                setSelectedConvoId(paramId)
+                setMobileShowChat(true)
+            } else if (data.length > 0 && !mobileShowChat && window.innerWidth >= 768) {
+                setSelectedConvoId(data[0].id)
             }
+        }
+
+        void init()
+    }, [user, isLoaded, mobileShowChat, searchParams])
+
+    useEffect(() => {
+        if (!selectedConvoId) return
+
+        const loadMessages = async () => {
+            setLoadingMessages(true)
+            await fetchMessages(selectedConvoId)
             setLoadingMessages(false)
         }
 
-        void fetchMessages()
+        void loadMessages()
+        void fetch(`/api/conversations/${selectedConvoId}/messages/read`, { method: 'PATCH' }).catch(() => undefined)
 
-        const channel = supabase
-            .channel(`messages:${selectedConvoId}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages',
-                filter: `conversation_id=eq.${selectedConvoId}`
-            }, (payload) => {
-                const typedPayload = payload as unknown as ConversationPayload
-                setMessages((prev) => [...prev, typedPayload.new])
-            })
-            .subscribe()
+        if (pollRef.current) clearInterval(pollRef.current)
+        pollRef.current = setInterval(() => {
+            void fetchMessages(selectedConvoId)
+            void fetchConversations()
+        }, 3000)
 
         return () => {
-            void supabase.removeChannel(channel)
+            if (pollRef.current) clearInterval(pollRef.current)
         }
-    }, [selectedConvoId, supabase])
+    }, [selectedConvoId])
 
     useEffect(() => {
-        if (!selectedConvoId || !user || !supabase) return
-
-        const markAsRead = async () => {
-            await supabase
-                .from('messages')
-                .update({ status: 'read' })
-                .eq('conversation_id', selectedConvoId)
-                .neq('sender_id', user.id)
-                .neq('status', 'read')
-        }
-
-        void markAsRead()
-    }, [selectedConvoId, messages.length, supabase, user])
+        if (!selectedConvoId || !user) return
+        void fetch(`/api/conversations/${selectedConvoId}/messages/read`, { method: 'PATCH' }).catch(() => undefined)
+    }, [messages.length, selectedConvoId, user])
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages, loadingMessages])
 
     const handleSend = async () => {
-        if (!messageInput.trim() || !selectedConvoId || !user || !supabase) return
+        if (!messageInput.trim() || !selectedConvoId || !user) return
 
         const text = messageInput.trim()
         setMessageInput('')
 
-        const { error } = await supabase
-            .from('messages')
-            .insert({
-                conversation_id: selectedConvoId,
-                sender_id: user.id,
-                text,
-                status: 'sent'
+        const optimisticMessage: Message = {
+            id: `temp-${Date.now()}`,
+            conversation_id: selectedConvoId,
+            sender_id: user.id,
+            text,
+            status: 'sent',
+            created_at: new Date().toISOString(),
+        }
+        setMessages((prev) => [...prev, optimisticMessage])
+
+        try {
+            const response = await fetch(`/api/conversations/${selectedConvoId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text }),
             })
 
-        if (error) {
+            if (!response.ok) {
+                throw new Error('Failed to send')
+            }
+
+            const sentMessage = await response.json() as Message
+            setMessages((prev) => prev.map((message) => message.id === optimisticMessage.id ? sentMessage : message))
+            setConversations((prev) => prev.map((conversation) =>
+                conversation.id === selectedConvoId
+                    ? { ...conversation, last_message_text: text, last_message_at: new Date().toISOString() }
+                    : conversation
+            ))
+        } catch (error) {
             console.error('Error sending message:', error)
             toast('Failed to send message', 'error')
+            setMessages((prev) => prev.filter((message) => message.id !== optimisticMessage.id))
             setMessageInput(text)
+        }
+    }
+
+    const handleUserSearch = (query: string) => {
+        setUserSearchQuery(query)
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+
+        if (query.trim().length < 2) {
+            setUserSearchResults([])
             return
         }
 
-        await supabase
-            .from('conversations')
-            .update({
-                last_message_text: text,
-                last_message_at: new Date().toISOString()
+        setSearchingUsers(true)
+        searchTimeoutRef.current = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`)
+                if (response.ok) {
+                    const data = await response.json() as SearchUserResult[]
+                    setUserSearchResults(data)
+                }
+            } catch (err) {
+                console.error('User search error:', err)
+            } finally {
+                setSearchingUsers(false)
+            }
+        }, 300)
+    }
+
+    const startNewConversation = async (participantId: string) => {
+        setStartingConvo(true)
+        try {
+            const response = await fetch('/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participantId }),
             })
-            .eq('id', selectedConvoId)
+            const data = await response.json() as { conversationId?: string; error?: string }
+            if (!response.ok || !data.conversationId) throw new Error(data.error || 'Failed to start conversation')
+
+            setShowNewConvo(false)
+            setUserSearchQuery('')
+            setUserSearchResults([])
+            setSelectedConvoId(data.conversationId)
+            setMobileShowChat(true)
+            window.location.href = `/dashboard/messages?id=${data.conversationId}`
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to start conversation'
+            toast(message, 'error')
+        } finally {
+            setStartingConvo(false)
+        }
     }
 
     const filteredConversations = conversations.filter((conversation) =>
@@ -298,7 +274,7 @@ function MessagesContent() {
 
     const selectedConvo = conversations.find((conversation) => conversation.id === selectedConvoId)
 
-    if (!isLoaded || !supabase || loadingConvos) {
+    if (!isLoaded || loadingConvos) {
         return (
             <div className="flex items-center justify-center h-[calc(100vh-160px)]">
                 <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-primary)' }} />
@@ -309,12 +285,19 @@ function MessagesContent() {
     return (
         <div className="rounded-lg shadow-md overflow-hidden flex h-[calc(100vh-160px)]"
             style={{ background: 'var(--bg-card)' }}>
-
             <div className={`w-full md:w-80 md:min-w-[320px] flex flex-col ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}
                 style={{ borderRight: '1px solid var(--border-subtle)' }}>
                 <div className="p-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Messages</h2>
+                        <button
+                            onClick={() => setShowNewConvo(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                            style={{ background: 'var(--brand-primary)', color: '#fff' }}
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span className="hidden sm:inline">New</span>
+                        </button>
                     </div>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
@@ -480,7 +463,6 @@ function MessagesContent() {
                                 </h3>
                             </div>
                         </div>
-
                         <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: 'var(--bg-lighter)' }}>
                             {loadingMessages ? (
                                 <div className="flex justify-center py-4">
@@ -558,6 +540,74 @@ function MessagesContent() {
                     </div>
                 )}
             </div>
+
+            {showNewConvo && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowNewConvo(false)}>
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                    <div className="relative w-full max-w-md rounded-2xl shadow-xl p-6"
+                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
+                        onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>New Conversation</h3>
+                            <button onClick={() => setShowNewConvo(false)} className="p-1 rounded-full" style={{ color: 'var(--text-muted)' }}>
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                            <input
+                                type="text"
+                                placeholder="Search users by name..."
+                                value={userSearchQuery}
+                                onChange={(e) => handleUserSearch(e.target.value)}
+                                autoFocus
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2"
+                                style={{ background: 'var(--bg-lighter)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                            />
+                        </div>
+                        <div className="max-h-64 overflow-y-auto space-y-1">
+                            {searchingUsers ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--brand-primary)' }} />
+                                </div>
+                            ) : userSearchResults.length > 0 ? (
+                                userSearchResults.map((searchUser) => (
+                                    <button
+                                        key={searchUser.id}
+                                        onClick={() => startNewConversation(searchUser.id)}
+                                        disabled={startingConvo}
+                                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left hover:opacity-80 disabled:opacity-50"
+                                        style={{ background: 'var(--bg-lighter)' }}
+                                    >
+                                        {searchUser.avatar_url ? (
+                                            <img src={searchUser.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                                style={{ background: 'var(--brand-primary)' }}>
+                                                {(searchUser.full_name || '?')[0].toUpperCase()}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{searchUser.full_name}</p>
+                                        </div>
+                                        {startingConvo && <Loader2 className="w-4 h-4 animate-spin ml-auto" style={{ color: 'var(--brand-primary)' }} />}
+                                    </button>
+                                ))
+                            ) : userSearchQuery.trim().length >= 2 ? (
+                                <div className="text-center py-8">
+                                    <UserPlus className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
+                                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No users found</p>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Type at least 2 characters to search</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

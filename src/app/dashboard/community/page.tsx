@@ -17,6 +17,7 @@ interface Post {
     title: string
     body: string | null
     flair: string | null
+    image_url: string | null
     upvotes: number
     downvotes: number
     comment_count: number
@@ -52,7 +53,7 @@ export default function CommunityPage() {
         fetchPosts()
     }, [fetchPosts])
 
-    const handleCreatePost = async (data: { title: string; body: string; flair: string | null }) => {
+    const handleCreatePost = async (data: { title: string; body: string; flair: string | null; image_url?: string | null }) => {
         const res = await fetch('/api/community/posts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -103,7 +104,7 @@ export default function CommunityPage() {
 
     return (
         <PullToRefresh onRefresh={fetchPosts}>
-            <div className="space-y-4">
+            <div className="max-w-3xl mx-auto space-y-4">
                 {/* Community header */}
                 <div className="glass rounded-2xl p-4 sm:p-5">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
