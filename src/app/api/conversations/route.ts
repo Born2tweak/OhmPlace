@@ -46,30 +46,40 @@ export async function GET() {
             )
         )]
 
-        const client = await clerkClient()
-        const [clerkUsers, profilesResult] = await Promise.all([
-            Promise.all(
-                otherUserIds.map(async (id): Promise<ClerkUserSummary> => {
-                    try {
-                        const user = await client.users.getUser(id)
-                        return {
-                            id,
-                            full_name: user.fullName || user.firstName || user.username || 'Unknown User',
-                            email: user.primaryEmailAddress?.emailAddress || '',
-                            clerk_avatar: user.imageUrl,
-                        }
-                    } catch {
-                        return { id, full_name: null, email: '', clerk_avatar: null }
-                    }
-                })
-            ),
+        if (otherUserIds.length === 0) {
+            return NextResponse.json([])
+        }
+
+        const [clerkResponse, profilesResult] = await Promise.all([
+            clerkClient()
+                .then((client) => client.users.getUserList({ userId: otherUserIds, limit: 100 }))
+                .catch((err) => {
+                    console.error('Clerk getUserList error:', err)
+                    return { data: [] }
+                }),
             supabase.from('profiles').select('id, full_name, avatar_url, email').in('id', otherUserIds),
         ])
+
+        const clerkUsers = (clerkResponse.data || []).map((user): ClerkUserSummary => ({
+            id: user.id,
+            full_name:
+                user.fullName ||
+                [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+                user.username ||
+                null,
+            email: user.primaryEmailAddress?.emailAddress || '',
+            clerk_avatar: user.imageUrl,
+        }))
 
         const clerkMap = new Map<string, ClerkUserSummary>(clerkUsers.map((user) => [user.id, user]))
         const profileMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'email'>>(
             (profilesResult.data || []).map((profile) => [profile.id, profile])
         )
+
+        const missingFromClerk = otherUserIds.filter((id) => !clerkMap.has(id))
+        if (missingFromClerk.length > 0) {
+            console.warn('User IDs in conversations not found in Clerk:', missingFromClerk)
+        }
 
         const enriched: ConversationWithUser[] = data.map((conversation) => {
             const otherUserId = conversation.participant_1 === authUser.userId ? conversation.participant_2 : conversation.participant_1

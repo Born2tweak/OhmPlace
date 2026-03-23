@@ -28,6 +28,16 @@ type SwipeState = {
     startY: number | null
 }
 
+function getDisplayName(other_user?: { full_name?: string | null; email?: string; id?: string }) {
+    if (other_user?.full_name) return other_user.full_name
+    if (other_user?.email) {
+        // e.g. 'jsmith@purdue.edu' → 'Jsmith'
+        const prefix = other_user.email.split('@')[0]
+        return prefix.charAt(0).toUpperCase() + prefix.slice(1)
+    }
+    return `User ${other_user?.id?.slice(-4) || '???'}`
+}
+
 function StatusIcon({ status }: { status?: MessageStatus }) {
     if (!status) return null
     if (status === 'sent') return <Check className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
@@ -373,13 +383,13 @@ function MessagesContent() {
                                             ) : (
                                                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
                                                     style={{ background: 'var(--brand-primary)' }}>
-                                                    {convo.other_user?.full_name?.charAt(0) || '?'}
+                                                    {getDisplayName(convo.other_user).charAt(0).toUpperCase()}
                                                 </div>
                                             )}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
                                                     <span className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                                                        {convo.other_user?.full_name || `User ${convo.other_user?.id.slice(0, 4)}`}
+                                                        {getDisplayName(convo.other_user)}
                                                     </span>
                                                     <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>
                                                         {new Date(convo.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -415,12 +425,12 @@ function MessagesContent() {
                             ) : (
                                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold"
                                     style={{ background: 'var(--brand-primary)' }}>
-                                    {selectedConvo.other_user?.full_name?.charAt(0) || '?'}
+                                    {getDisplayName(selectedConvo.other_user).charAt(0).toUpperCase()}
                                 </div>
                             )}
                             <div>
                                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                                    {selectedConvo.other_user?.full_name || `User ${selectedConvo.other_user?.id.slice(0, 4)}`}
+                                    {getDisplayName(selectedConvo.other_user)}
                                 </h3>
                             </div>
                         </div>
