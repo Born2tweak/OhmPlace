@@ -30,39 +30,45 @@ export async function GET() {
             )
         )] as string[]
 
-        // Fetch Clerk user data + profile avatar overrides in parallel
-        const [clerkUsers, profilesResult] = await Promise.all([
-            // Fetch from Clerk (authoritative source for name/email/avatar)
-            Promise.all(
-                otherUserIds.map(async (id) => {
-                    try {
-                        const client = await clerkClient()
-                        const u = await client.users.getUser(id)
-                        return {
-                            id,
-                            full_name: u.fullName || u.firstName || u.username || 'Unknown User',
-                            email: u.primaryEmailAddress?.emailAddress || '',
-                            clerk_avatar: u.imageUrl,
-                        }
-                    } catch {
-                        return { id, full_name: null, email: '', clerk_avatar: null }
-                    }
-                })
-            ),
-            // Fetch profiles for custom avatar overrides
+        if (otherUserIds.length === 0) {
+            return NextResponse.json([])
+        }
+
+        // Batch fetch all users from Clerk in a single call + profiles in parallel
+        const [clerkResponse, profilesResult] = await Promise.all([
+            clerkClient().then(client =>
+                client.users.getUserList({ userId: otherUserIds, limit: 100 })
+            ).catch(err => {
+                console.error('Clerk getUserList error:', err)
+                return { data: [] }
+            }),
             supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherUserIds),
         ])
 
-        const clerkMap = new Map(clerkUsers.map((u) => [u.id, u]))
+        const clerkMap = new Map(
+            (clerkResponse.data || []).map((u: any) => [u.id, {
+                id: u.id,
+                full_name: u.fullName || ([u.firstName, u.lastName].filter(Boolean).join(' ')) || u.username || null,
+                email: u.primaryEmailAddress?.emailAddress || '',
+                clerk_avatar: u.imageUrl,
+            }])
+        )
+
         const profileMap = new Map(profilesResult.data?.map((p: any) => [p.id, p]))
+
+        // Log any IDs that Clerk doesn't know about (stale/deleted accounts)
+        const missingFromClerk = otherUserIds.filter(id => !clerkMap.has(id))
+        if (missingFromClerk.length > 0) {
+            console.warn('User IDs in conversations not found in Clerk:', missingFromClerk)
+        }
 
         const enriched = data.map((c: any) => {
             const otherUserId = c.participant_1 === authUser.userId ? c.participant_2 : c.participant_1
-            const clerk = clerkMap.get(otherUserId)
+            const clerk = clerkMap.get(otherUserId) as any
             const profile = profileMap.get(otherUserId) as any
 
             // Profile full_name overrides Clerk if explicitly set; profile avatar_url overrides Clerk avatar if set
-            const full_name = profile?.full_name || clerk?.full_name || 'Unknown User'
+            const full_name = profile?.full_name || clerk?.full_name || null
             const avatar_url = profile?.avatar_url || clerk?.clerk_avatar || undefined
 
             return {
