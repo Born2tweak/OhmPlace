@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase/server'
+import { clerkClient } from '@clerk/nextjs/server'
 
 export async function GET() {
     const authUser = await getAuthenticatedUser()
@@ -22,30 +23,55 @@ export async function GET() {
             return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 })
         }
 
-        // Enrich with profile data
-        const userIds = new Set<string>()
-        data.forEach((c: any) => {
-            userIds.add(c.participant_1)
-            userIds.add(c.participant_2)
-        })
+        // Collect all OTHER participant IDs (not the current user)
+        const otherUserIds = [...new Set(
+            data.map((c: any) =>
+                c.participant_1 === authUser.userId ? c.participant_2 : c.participant_1
+            )
+        )] as string[]
 
-        const { data: profiles } = await supabase
-            .from('profiles')
-            .select('*')
-            .in('id', Array.from(userIds))
+        // Fetch Clerk user data + profile avatar overrides in parallel
+        const [clerkUsers, profilesResult] = await Promise.all([
+            // Fetch from Clerk (authoritative source for name/email/avatar)
+            Promise.all(
+                otherUserIds.map(async (id) => {
+                    try {
+                        const client = await clerkClient()
+                        const u = await client.users.getUser(id)
+                        return {
+                            id,
+                            full_name: u.fullName || u.firstName || u.username || 'Unknown User',
+                            email: u.primaryEmailAddress?.emailAddress || '',
+                            clerk_avatar: u.imageUrl,
+                        }
+                    } catch {
+                        return { id, full_name: null, email: '', clerk_avatar: null }
+                    }
+                })
+            ),
+            // Fetch profiles for custom avatar overrides
+            supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherUserIds),
+        ])
 
-        const profileMap = new Map(profiles?.map((p: any) => [p.id, p]))
+        const clerkMap = new Map(clerkUsers.map((u) => [u.id, u]))
+        const profileMap = new Map(profilesResult.data?.map((p: any) => [p.id, p]))
 
         const enriched = data.map((c: any) => {
             const otherUserId = c.participant_1 === authUser.userId ? c.participant_2 : c.participant_1
+            const clerk = clerkMap.get(otherUserId)
             const profile = profileMap.get(otherUserId) as any
+
+            // Profile full_name overrides Clerk if explicitly set; profile avatar_url overrides Clerk avatar if set
+            const full_name = profile?.full_name || clerk?.full_name || 'Unknown User'
+            const avatar_url = profile?.avatar_url || clerk?.clerk_avatar || undefined
+
             return {
                 ...c,
                 other_user: {
                     id: otherUserId,
-                    email: profile?.email || 'user@campus.edu',
-                    full_name: profile?.full_name || undefined,
-                    avatar_url: profile?.avatar_url || undefined,
+                    email: clerk?.email || profile?.email || '',
+                    full_name,
+                    avatar_url,
                 }
             }
         })
@@ -56,6 +82,7 @@ export async function GET() {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
+
 
 export async function POST(request: NextRequest) {
     const authUser = await getAuthenticatedUser()

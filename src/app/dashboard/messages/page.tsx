@@ -76,42 +76,7 @@ function MessagesContent() {
             const res = await fetch('/api/conversations')
             if (!res.ok) throw new Error('Failed to fetch')
             const data = await res.json()
-
             setConversations(data)
-
-            // Fallback: Fetch missing profiles from API
-            const missingIds = data
-                .filter((c: any) => !c.other_user?.full_name || !c.other_user?.avatar_url)
-                .map((c: any) => c.other_user?.id)
-
-            if (missingIds.length > 0) {
-                const uniqueMissing = Array.from(new Set(missingIds)) as string[]
-                uniqueMissing.forEach(async (id) => {
-                    try {
-                        const res = await fetch(`/api/users/${id}`)
-                        if (res.ok) {
-                            const userData = await res.json()
-                            setConversations(prev => prev.map((c: any) => {
-                                if (c.other_user?.id === id) {
-                                    return {
-                                        ...c,
-                                        other_user: {
-                                            id: id as string,
-                                            email: userData.email,
-                                            full_name: userData.full_name,
-                                            avatar_url: userData.avatar_url
-                                        }
-                                    }
-                                }
-                                return c
-                            }))
-                        }
-                    } catch (err) {
-                        console.error(`Failed to fetch user ${id}`, err)
-                    }
-                })
-            }
-
             return data
         } catch (err) {
             console.error('Error fetching conversations:', err)
