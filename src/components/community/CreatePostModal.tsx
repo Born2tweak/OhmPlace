@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { useSession } from '@clerk/nextjs'
 import { X, AlertCircle, ImagePlus, Loader2 } from 'lucide-react'
 import { FLAIRS } from './FlairBadge'
 import { uploadPostImage } from '@/lib/supabase/storage'
@@ -22,6 +23,7 @@ export default function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePos
     const [closing, setClosing] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const { session } = useSession()
 
     useEffect(() => {
         const check = () => setIsMobile(window.innerWidth < 1024)
@@ -94,7 +96,8 @@ export default function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePos
             // Upload image first if selected
             if (imageFile) {
                 const tempId = crypto.randomUUID()
-                image_url = await uploadPostImage(imageFile, tempId)
+                const token = await session?.getToken({ template: 'supabase' })
+                image_url = await uploadPostImage(imageFile, tempId, token || undefined)
             }
 
             await onSubmit({ title: title.trim(), body: body.trim(), flair, image_url })

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, use } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MessageSquare, Share2, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Share2, Trash2, Loader2, Mail } from 'lucide-react'
 import VoteButton from '@/components/community/VoteButton'
 import FlairBadge from '@/components/community/FlairBadge'
 import CommentSection from '@/components/community/CommentSection'
@@ -63,6 +63,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     const router = useRouter()
     const [post, setPost] = useState<PostDetail | null>(null)
     const [loading, setLoading] = useState(true)
+    const [messagingAuthor, setMessagingAuthor] = useState(false)
     const { toast } = useToast()
 
     const fetchPost = useCallback(async () => {
@@ -270,6 +271,38 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                         <Share2 className="w-4 h-4" />
                         Share
                     </button>
+
+                    {/* Message Author (hidden for own posts) */}
+                    {user && post.user_id !== user.id && (
+                        <button
+                            onClick={async () => {
+                                setMessagingAuthor(true)
+                                try {
+                                    const res = await fetch('/api/conversations', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ participantId: post.user_id }),
+                                    })
+                                    const data = await res.json()
+                                    if (!res.ok) throw new Error(data.error)
+                                    router.push(`/dashboard/messages?id=${data.conversationId}`)
+                                } catch (err: any) {
+                                    toast(err.message || 'Failed to start conversation', 'error')
+                                    setMessagingAuthor(false)
+                                }
+                            }}
+                            disabled={messagingAuthor}
+                            className="flex items-center gap-1.5 text-sm px-2 py-1 rounded-full transition-colors disabled:opacity-50"
+                            style={{ color: 'var(--brand-primary)' }}
+                        >
+                            {messagingAuthor ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Mail className="w-4 h-4" />
+                            )}
+                            Message
+                        </button>
+                    )}
 
                     {isOwner && (
                         <button

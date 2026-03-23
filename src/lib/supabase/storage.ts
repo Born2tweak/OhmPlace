@@ -96,7 +96,8 @@ export async function deleteAllListingImages(listingId: string): Promise<void> {
 
 export async function uploadPostImage(
     file: File,
-    postId: string
+    postId: string,
+    clerkToken?: string
 ): Promise<string> {
     if (file.size > MAX_FILE_SIZE) {
         throw new Error('File size must be less than 5MB')
@@ -106,7 +107,7 @@ export async function uploadPostImage(
         throw new Error('Only JPEG, PNG, and WebP images are allowed')
     }
 
-    const supabase = createClient()
+    const supabase = createClient(clerkToken)
 
     const fileExt = file.name.split('.').pop()
     const fileName = `${postId}/${crypto.randomUUID()}.${fileExt}`

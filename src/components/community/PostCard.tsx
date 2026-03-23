@@ -2,7 +2,8 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { MessageSquare, Share2, Trash2 } from 'lucide-react'
+import { MessageSquare, Share2, Trash2, Mail, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import VoteButton from './VoteButton'
 import FlairBadge from './FlairBadge'
 import { useToast } from '@/components/Toast'
@@ -52,6 +53,8 @@ function getInitials(name: string): string {
 export default function PostCard({ post, currentUserId, onVote, onDelete, index = 0 }: PostCardProps) {
     const isOwner = post.user_id === currentUserId
     const { toast } = useToast()
+    const router = useRouter()
+    const [messagingAuthor, setMessagingAuthor] = React.useState(false)
 
     const handleShare = (e: React.MouseEvent) => {
         e.preventDefault()
@@ -137,6 +140,35 @@ export default function PostCard({ post, currentUserId, onVote, onDelete, index 
                             <Share2 className="w-4 h-4" />
                             <span className="hidden sm:inline">Share</span>
                         </button>
+
+                        {!isOwner && currentUserId && (
+                            <button
+                                onClick={async (e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    setMessagingAuthor(true)
+                                    try {
+                                        const res = await fetch('/api/conversations', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ participantId: post.user_id }),
+                                        })
+                                        const data = await res.json()
+                                        if (!res.ok) throw new Error(data.error)
+                                        router.push(`/dashboard/messages?id=${data.conversationId}`)
+                                    } catch (err: any) {
+                                        toast(err.message || 'Failed to start conversation', 'error')
+                                        setMessagingAuthor(false)
+                                    }
+                                }}
+                                disabled={messagingAuthor}
+                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+                                style={{ color: 'var(--brand-primary)' }}
+                                title="Message author"
+                            >
+                                {messagingAuthor ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                            </button>
+                        )}
 
                         {isOwner && onDelete && (
                             <button

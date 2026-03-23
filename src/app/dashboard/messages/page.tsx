@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo, Suspense } from 'react'
-import { useUser, useSession } from '@clerk/nextjs'
+import { useState, useRef, useEffect, Suspense } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag } from 'lucide-react'
+import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag, Plus, X, UserPlus } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import Link from 'next/link'
 
@@ -46,12 +45,9 @@ function StatusIcon({ status }: { status?: MessageStatus }) {
 
 function MessagesContent() {
     const { user, isLoaded } = useUser()
-    const { session } = useSession()
     const searchParams = useSearchParams()
     const router = useRouter()
     const { toast } = useToast()
-
-    const [supabase, setSupabase] = useState<any>(null)
 
     // State
     const [conversations, setConversations] = useState<Conversation[]>([])
@@ -63,202 +59,135 @@ function MessagesContent() {
     const [searchQuery, setSearchQuery] = useState('')
     const [mobileShowChat, setMobileShowChat] = useState(false)
 
+    // New conversation modal state
+    const [showNewConvo, setShowNewConvo] = useState(false)
+    const [userSearchQuery, setUserSearchQuery] = useState('')
+    const [userSearchResults, setUserSearchResults] = useState<{ id: string; full_name: string; avatar_url: string }[]>([])
+    const [searchingUsers, setSearchingUsers] = useState(false)
+    const [startingConvo, setStartingConvo] = useState(false)
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const pollRef = useRef<NodeJS.Timeout | null>(null)
 
-    // Initialize Supabase Client with Clerk Token
-    useEffect(() => {
-        if (!isLoaded || !session) return;
+    // Fetch conversations via API
+    const fetchConversations = async () => {
+        try {
+            const res = await fetch('/api/conversations')
+            if (!res.ok) throw new Error('Failed to fetch')
+            const data = await res.json()
 
-        let isMounted = true;
-        const initSupabase = async () => {
-            try {
-                const token = await session.getToken({ template: 'supabase' });
-                if (isMounted) {
-                    setSupabase(createClient(token || undefined));
-                }
-            } catch (err) {
-                console.error("Failed to fetch Clerk Supabase token:", err);
-                if (isMounted) toast("Authentication error. Please refresh.", "error");
+            setConversations(data)
+
+            // Fallback: Fetch missing profiles from API
+            const missingIds = data
+                .filter((c: any) => !c.other_user?.full_name || !c.other_user?.avatar_url)
+                .map((c: any) => c.other_user?.id)
+
+            if (missingIds.length > 0) {
+                const uniqueMissing = Array.from(new Set(missingIds)) as string[]
+                uniqueMissing.forEach(async (id) => {
+                    try {
+                        const res = await fetch(`/api/users/${id}`)
+                        if (res.ok) {
+                            const userData = await res.json()
+                            setConversations(prev => prev.map((c: any) => {
+                                if (c.other_user?.id === id) {
+                                    return {
+                                        ...c,
+                                        other_user: {
+                                            id: id as string,
+                                            email: userData.email,
+                                            full_name: userData.full_name,
+                                            avatar_url: userData.avatar_url
+                                        }
+                                    }
+                                }
+                                return c
+                            }))
+                        }
+                    } catch (err) {
+                        console.error(`Failed to fetch user ${id}`, err)
+                    }
+                })
             }
-        };
-        initSupabase();
 
-        return () => { isMounted = false; };
-    }, [isLoaded, session]);
+            return data
+        } catch (err) {
+            console.error('Error fetching conversations:', err)
+            return []
+        }
+    }
+
+    // Fetch messages via API
+    const fetchMessages = async (convoId: string) => {
+        try {
+            const res = await fetch(`/api/conversations/${convoId}/messages`)
+            if (!res.ok) throw new Error('Failed to fetch')
+            const data = await res.json()
+            setMessages(data)
+        } catch (err) {
+            console.error('Error fetching messages:', err)
+        }
+    }
 
     // Initial load
     useEffect(() => {
-        if (!isLoaded || !user || !supabase) return
+        if (!isLoaded || !user) return
 
-        const fetchConversations = async () => {
+        const init = async () => {
             setLoadingConvos(true)
-            const { data, error } = await supabase
-                .from('conversations')
-                .select('*')
-                .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
-                .order('last_message_at', { ascending: false })
-
-            if (error) {
-                console.error('Error fetching conversations:', error)
-            } else {
-                // 1. Get all participant IDs
-                const userIds = new Set<string>()
-                data.forEach((c: any) => {
-                    userIds.add(c.participant_1)
-                    userIds.add(c.participant_2)
-                })
-
-                // 2. Fetch profiles from Supabase
-                const { data: profiles } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .in('id', Array.from(userIds))
-
-                const profileMap = new Map(profiles?.map((p: any) => [p.id, p]))
-
-                // 3. Construct conversation objects
-                const enriched = data.map((c: any) => {
-                    const otherUserId = c.participant_1 === user.id ? c.participant_2 : c.participant_1
-                    const profile = profileMap.get(otherUserId) as any
-                    return {
-                        ...c,
-                        other_user: {
-                            id: otherUserId,
-                            email: profile?.email || 'user@campus.edu',
-                            full_name: profile?.full_name, // Leave undefined to trigger API fallback
-                            avatar_url: profile?.avatar_url
-                        }
-                    }
-                })
-
-                setConversations(enriched as any)
-
-                // 4. Fallback: Fetch missing profiles or avatars from API
-                const missingIds = enriched
-                    .filter((c: any) => !c.other_user?.full_name || !c.other_user?.avatar_url)
-                    .map((c: any) => c.other_user?.id)
-
-                if (missingIds.length > 0) {
-                    const uniqueMissing = Array.from(new Set(missingIds))
-                    uniqueMissing.forEach(async (id) => {
-                        try {
-                            const res = await fetch(`/api/users/${id}`)
-                            if (res.ok) {
-                                const userData = await res.json()
-
-                                // Update local state for immediate feedback
-                                setConversations(prev => prev.map((c: any) => {
-                                    if (c.other_user?.id === id) {
-                                        return {
-                                            ...c,
-                                            other_user: {
-                                                id: id as string,
-                                                email: userData.email,
-                                                full_name: userData.full_name,
-                                                avatar_url: userData.avatar_url
-                                            }
-                                        }
-                                    }
-                                    return c
-                                }))
-                            }
-                        } catch (err) {
-                            console.error(`Failed to fetch user ${id}`, err)
-                        }
-                    })
-                }
-
-                // 5. Handle selection
-                const paramId = searchParams.get('id')
-                if (paramId && enriched.find((c: any) => c.id === paramId)) {
-                    setSelectedConvoId(paramId)
-                    setMobileShowChat(true)
-                } else if (enriched.length > 0 && !mobileShowChat) {
-                    if (window.innerWidth >= 768) {
-                        setSelectedConvoId(enriched[0].id)
-                    }
-                }
-            }
+            const data = await fetchConversations()
             setLoadingConvos(false)
-        }
 
-        fetchConversations()
-
-        const channel = supabase
-            .channel('conversations')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'conversations',
-                filter: `participant_1=eq.${user.id}`
-            }, () => fetchConversations())
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'conversations',
-                filter: `participant_2=eq.${user.id}`
-            }, () => fetchConversations())
-            .subscribe()
-
-        return () => {
-            supabase.removeChannel(channel)
-        }
-    }, [user, isLoaded, supabase])
-
-    // Fetch messages when selected conversation changes
-    useEffect(() => {
-        if (!selectedConvoId || !supabase) return
-
-        const fetchMessages = async () => {
-            setLoadingMessages(true)
-            const { data, error } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('conversation_id', selectedConvoId)
-                .order('created_at', { ascending: true })
-
-            if (error) {
-                console.error('Error fetching messages:', error)
-            } else {
-                setMessages(data)
+            // Handle selection
+            const paramId = searchParams.get('id')
+            if (paramId && data.find((c: any) => c.id === paramId)) {
+                setSelectedConvoId(paramId)
+                setMobileShowChat(true)
+            } else if (data.length > 0 && !mobileShowChat) {
+                if (window.innerWidth >= 768) {
+                    setSelectedConvoId(data[0].id)
+                }
             }
+        }
+
+        init()
+    }, [user, isLoaded])
+
+    // Fetch messages when conversation changes + set up polling
+    useEffect(() => {
+        if (!selectedConvoId) return
+
+        const loadMessages = async () => {
+            setLoadingMessages(true)
+            await fetchMessages(selectedConvoId)
             setLoadingMessages(false)
         }
 
-        fetchMessages()
+        loadMessages()
 
-        const channel = supabase
-            .channel(`messages:${selectedConvoId}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages',
-                filter: `conversation_id=eq.${selectedConvoId}`
-            }, (payload: any) => {
-                setMessages(prev => [...prev, payload.new as Message])
-            })
-            .subscribe()
+        // Mark messages as read
+        fetch(`/api/conversations/${selectedConvoId}/messages/read`, { method: 'PATCH' }).catch(() => {})
+
+        // Poll for new messages every 3 seconds
+        if (pollRef.current) clearInterval(pollRef.current)
+        pollRef.current = setInterval(() => {
+            fetchMessages(selectedConvoId)
+            // Also refresh conversations for updated last_message_text
+            fetchConversations()
+        }, 3000)
 
         return () => {
-            supabase.removeChannel(channel)
+            if (pollRef.current) clearInterval(pollRef.current)
         }
     }, [selectedConvoId])
 
-    // Mark incoming messages as read when conversation is opened
+    // Mark as read when message count changes
     useEffect(() => {
-        if (!selectedConvoId || !user || !supabase) return
-
-        const markAsRead = async () => {
-            await supabase
-                .from('messages')
-                .update({ status: 'read' })
-                .eq('conversation_id', selectedConvoId)
-                .neq('sender_id', user.id)
-                .neq('status', 'read')
-        }
-
-        markAsRead()
-    }, [selectedConvoId, messages.length])
+        if (!selectedConvoId || !user) return
+        fetch(`/api/conversations/${selectedConvoId}/messages/read`, { method: 'PATCH' }).catch(() => {})
+    }, [messages.length])
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -270,27 +199,44 @@ function MessagesContent() {
         const text = messageInput.trim()
         setMessageInput('') // Optimistic clear
 
-        const { error } = await supabase
-            .from('messages')
-            .insert({
-                conversation_id: selectedConvoId,
-                sender_id: user.id,
-                text: text,
-                status: 'sent'
+        // Optimistic add
+        const optimisticMsg: Message = {
+            id: `temp-${Date.now()}`,
+            conversation_id: selectedConvoId,
+            sender_id: user.id,
+            text,
+            status: 'sent',
+            created_at: new Date().toISOString(),
+        }
+        setMessages(prev => [...prev, optimisticMsg])
+
+        try {
+            const res = await fetch(`/api/conversations/${selectedConvoId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text }),
             })
 
-        if (error) {
+            if (!res.ok) {
+                throw new Error('Failed to send')
+            }
+
+            const sentMessage = await res.json()
+            // Replace the optimistic message with the real one
+            setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? sentMessage : m))
+
+            // Update conversation list
+            setConversations(prev => prev.map(c =>
+                c.id === selectedConvoId
+                    ? { ...c, last_message_text: text, last_message_at: new Date().toISOString() }
+                    : c
+            ))
+        } catch (error) {
             console.error('Error sending message:', error)
             toast('Failed to send message', 'error')
-            setMessageInput(text) // Revert on error
-        } else {
-            await supabase
-                .from('conversations')
-                .update({
-                    last_message_text: text,
-                    last_message_at: new Date().toISOString()
-                })
-                .eq('id', selectedConvoId)
+            // Remove optimistic message on error
+            setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id))
+            setMessageInput(text) // Revert
         }
     }
 
@@ -299,9 +245,59 @@ function MessagesContent() {
         c.last_message_text?.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
+    const handleUserSearch = (query: string) => {
+        setUserSearchQuery(query)
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+        if (query.trim().length < 2) {
+            setUserSearchResults([])
+            return
+        }
+        setSearchingUsers(true)
+        searchTimeoutRef.current = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setUserSearchResults(data)
+                }
+            } catch (err) {
+                console.error('User search error:', err)
+            } finally {
+                setSearchingUsers(false)
+            }
+        }, 300)
+    }
+
+    const startNewConversation = async (participantId: string) => {
+        setStartingConvo(true)
+        try {
+            const res = await fetch('/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participantId }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error)
+
+            setShowNewConvo(false)
+            setUserSearchQuery('')
+            setUserSearchResults([])
+
+            // Refresh conversations and select the new one
+            setSelectedConvoId(data.conversationId)
+            setMobileShowChat(true)
+            // Re-fetch conversations to include the new one
+            window.location.href = `/dashboard/messages?id=${data.conversationId}`
+        } catch (error: any) {
+            toast(error.message || 'Failed to start conversation', 'error')
+        } finally {
+            setStartingConvo(false)
+        }
+    }
+
     const selectedConvo = conversations.find((c: any) => c.id === selectedConvoId)
 
-    if (!isLoaded || !supabase || loadingConvos) {
+    if (!isLoaded || loadingConvos) {
         return (
             <div className="flex items-center justify-center h-[calc(100vh-160px)]">
                 <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-primary)' }} />
@@ -320,6 +316,14 @@ function MessagesContent() {
                 <div className="p-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Messages</h2>
+                        <button
+                            onClick={() => setShowNewConvo(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                            style={{ background: 'var(--brand-primary)', color: '#fff' }}
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span className="hidden sm:inline">New</span>
+                        </button>
                     </div>
                     {/* Search */}
                     <div className="relative">
@@ -573,6 +577,75 @@ function MessagesContent() {
                     </div>
                 )}
             </div>
+
+            {/* New Conversation Modal */}
+            {showNewConvo && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowNewConvo(false)}>
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                    <div className="relative w-full max-w-md rounded-2xl shadow-xl p-6"
+                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
+                        onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>New Conversation</h3>
+                            <button onClick={() => setShowNewConvo(false)} className="p-1 rounded-full" style={{ color: 'var(--text-muted)' }}>
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                            <input
+                                type="text"
+                                placeholder="Search users by name..."
+                                value={userSearchQuery}
+                                onChange={e => handleUserSearch(e.target.value)}
+                                autoFocus
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2"
+                                style={{ background: 'var(--bg-lighter)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                            />
+                        </div>
+                        <div className="max-h-64 overflow-y-auto space-y-1">
+                            {searchingUsers ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--brand-primary)' }} />
+                                </div>
+                            ) : userSearchResults.length > 0 ? (
+                                userSearchResults.map(u => (
+                                    <button
+                                        key={u.id}
+                                        onClick={() => startNewConversation(u.id)}
+                                        disabled={startingConvo}
+                                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left hover:opacity-80 disabled:opacity-50"
+                                        style={{ background: 'var(--bg-lighter)' }}
+                                    >
+                                        {u.avatar_url ? (
+                                            <img src={u.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                                                style={{ background: 'var(--brand-primary)' }}>
+                                                {(u.full_name || '?')[0].toUpperCase()}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{u.full_name}</p>
+                                        </div>
+                                        {startingConvo && <Loader2 className="w-4 h-4 animate-spin ml-auto" style={{ color: 'var(--brand-primary)' }} />}
+                                    </button>
+                                ))
+                            ) : userSearchQuery.trim().length >= 2 ? (
+                                <div className="text-center py-8">
+                                    <UserPlus className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
+                                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No users found</p>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Type at least 2 characters to search</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
