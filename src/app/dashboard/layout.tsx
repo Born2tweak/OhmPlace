@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -9,7 +9,6 @@ import { useClerk } from '@clerk/nextjs'
 import { useTheme } from '@/components/ThemeProvider'
 import { ToastProvider } from '@/components/Toast'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({
     children
@@ -22,25 +21,24 @@ export default function DashboardLayout({
     const { theme, setTheme } = useTheme()
     const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
     const [tappedNav, setTappedNav] = useState<string | null>(null)
-    const supabase = useMemo(() => createClient(), [])
 
-    // Sync profile to Supabase on load
+
+    // Sync profile to Supabase via server-side API on load (client Supabase fails RLS without JWT)
     useEffect(() => {
         if (!user) return
 
         const syncProfile = async () => {
-            const { data: existing } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
-            const finalAvatarUrl = existing?.avatar_url || user.imageUrl
-
-            await supabase.from('profiles').upsert({
-                id: user.id,
-                email: user.primaryEmailAddress?.emailAddress,
-                full_name: user.fullName,
-                avatar_url: finalAvatarUrl,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'id' })
-
-            setProfileAvatar(finalAvatarUrl)
+            try {
+                const res = await fetch('/api/sync-profile', { method: 'POST' })
+                if (res.ok) {
+                    const data = await res.json()
+                    setProfileAvatar(data.avatar_url || user.imageUrl)
+                } else {
+                    setProfileAvatar(user.imageUrl)
+                }
+            } catch {
+                setProfileAvatar(user.imageUrl)
+            }
         }
 
         syncProfile()
