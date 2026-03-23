@@ -82,36 +82,51 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase()
 
     try {
-        // Check for existing conversation (bidirectional)
-        const { data: existing, error: fetchError } = await supabase
+        // Check for existing conversation (bidirectional) — use limit(1) not maybeSingle()
+        // because maybeSingle() errors when >1 row exists (e.g. both A→B and B→A rows)
+        const { data: existingRows, error: fetchError } = await supabase
             .from('conversations')
             .select('id')
             .or(
                 `and(participant_1.eq.${authUser.userId},participant_2.eq.${participantId}),and(participant_1.eq.${participantId},participant_2.eq.${authUser.userId})`
             )
-            .maybeSingle()
+            .limit(1)
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
+        if (fetchError) {
             console.error('Error finding conversation:', fetchError)
             return NextResponse.json({ error: 'Failed to find conversation' }, { status: 500 })
         }
 
-        if (existing) {
-            return NextResponse.json({ conversationId: existing.id })
+        if (existingRows && existingRows.length > 0) {
+            return NextResponse.json({ conversationId: existingRows[0].id })
         }
 
-        // Create new conversation
+        // Create new conversation — canonicalize order so (A,B) and (B,A) always produce the same row
+        const [p1, p2] = [authUser.userId, participantId].sort()
         const { data: newConvo, error: createError } = await supabase
             .from('conversations')
             .insert({
-                participant_1: authUser.userId,
-                participant_2: participantId,
+                participant_1: p1,
+                participant_2: p2,
                 last_message_at: new Date().toISOString(),
             })
             .select('id')
             .single()
 
         if (createError) {
+            // Handle race condition: another request may have just created the same conversation
+            if (createError.code === '23505') {
+                const { data: racedConvo } = await supabase
+                    .from('conversations')
+                    .select('id')
+                    .or(
+                        `and(participant_1.eq.${authUser.userId},participant_2.eq.${participantId}),and(participant_1.eq.${participantId},participant_2.eq.${authUser.userId})`
+                    )
+                    .limit(1)
+                if (racedConvo && racedConvo.length > 0) {
+                    return NextResponse.json({ conversationId: racedConvo[0].id })
+                }
+            }
             console.error('Error creating conversation:', createError)
             return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
         }
