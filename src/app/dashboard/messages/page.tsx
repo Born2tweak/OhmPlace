@@ -215,10 +215,16 @@ function MessagesContent() {
         }
     }
 
-    const filteredConversations = conversations.filter(c =>
-        c.other_user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.last_message_text?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filteredConversations = conversations.filter(c => {
+        // Hide ghost accounts (deleted/unknown users with no resolvable identity)
+        const hasIdentity = c.other_user?.full_name || c.other_user?.email
+        if (!hasIdentity) return false
+        // Apply search filter
+        if (!searchQuery) return true
+        const name = getDisplayName(c.other_user).toLowerCase()
+        return name.includes(searchQuery.toLowerCase()) ||
+            (c.last_message_text?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+    })
 
     const handleUserSearch = (query: string) => {
         setUserSearchQuery(query)
