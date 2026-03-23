@@ -23,60 +23,48 @@ export default function DashboardPage() {
     const [activeListings, setActiveListings] = useState(0)
     const [unreadMessages, setUnreadMessages] = useState(0)
 
-    useEffect(() => {
-        if (user?.id) {
-            fetchDashboardData()
-        }
-    }, [user?.id])
-
     const fetchDashboardData = async () => {
-        const supabase = createClient()
+        if (!user?.id) return
 
-        // Fetch all dashboard data in parallel
+        const supabase = createClient()
+        const { data: conversationRows } = await supabase
+            .from('conversations')
+            .select('id')
+            .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+
+        const conversationIds = conversationRows?.map((conversation) => conversation.id) || []
+
         const [trendingResult, soldResult, activeResult, messagesResult] = await Promise.all([
-            // Trending listings
             supabase
                 .from('listings')
                 .select('*')
                 .eq('status', 'available')
                 .order('created_at', { ascending: false })
                 .limit(3),
-
-            // Items sold by current user
             supabase
                 .from('listings')
                 .select('id', { count: 'exact', head: true })
-                .eq('user_id', user!.id)
+                .eq('user_id', user.id)
                 .eq('status', 'sold'),
-
-            // Active listings by current user
             supabase
                 .from('listings')
                 .select('id', { count: 'exact', head: true })
-                .eq('user_id', user!.id)
+                .eq('user_id', user.id)
                 .eq('status', 'available'),
-
-            // Unread messages for current user
-            supabase
-                .from('messages')
-                .select('id', { count: 'exact', head: true })
-                .neq('sender_id', user!.id)
-                .eq('status', 'sent')
-                .in('conversation_id',
-                    (await supabase
-                        .from('conversations')
-                        .select('id')
-                        .or(`participant_1.eq.${user!.id},participant_2.eq.${user!.id}`)
-                    ).data?.map(c => c.id) || []
-                ),
+            conversationIds.length > 0
+                ? supabase
+                    .from('messages')
+                    .select('id', { count: 'exact', head: true })
+                    .neq('sender_id', user.id)
+                    .eq('status', 'sent')
+                    .in('conversation_id', conversationIds)
+                : Promise.resolve({ count: 0 }),
         ])
 
-        // Set stats
         setItemsSold(soldResult.count ?? 0)
         setActiveListings(activeResult.count ?? 0)
         setUnreadMessages(messagesResult.count ?? 0)
 
-        // Set trending listings with images
         if (trendingResult.data) {
             const listingsWithImages: ListingWithImages[] = await Promise.all(
                 trendingResult.data.map(async (listing) => {
@@ -97,6 +85,17 @@ export default function DashboardPage() {
         }
         setLoading(false)
     }
+
+    useEffect(() => {
+        if (user?.id) {
+            const timeoutId = window.setTimeout(() => {
+                void fetchDashboardData()
+            }, 0)
+
+            return () => window.clearTimeout(timeoutId)
+        }
+    }, [user?.id])
+
 
     const schoolName = user?.primaryEmailAddress?.emailAddress?.match(/@(.+\.edu)$/i)?.[1]?.replace('.edu', '').toUpperCase() || 'University'
 

@@ -40,7 +40,7 @@ export default function ListingCard({
 
     const conditionLabel = listing.condition === 'new' ? 'New' : listing.condition === 'used-good' ? 'Used - Good' : 'Used - Fair'
 
-    const CardContent = () => (
+    const content = (
         <div
             className={`h-full flex flex-col overflow-hidden rounded-2xl hover-lift animate-fade-in-up stagger-${Math.min(index + 1, 6)} ${isPromoted ? 'promoted-glow' : ''}`}
             style={{
@@ -162,10 +162,10 @@ export default function ListingCard({
     if (linkTo) {
         return (
             <Link href={linkTo} className="block h-full">
-                <CardContent />
+                {content}
             </Link>
         )
     }
 
-    return <CardContent />
+    return content
 }

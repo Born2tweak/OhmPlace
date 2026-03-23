@@ -31,6 +31,20 @@ export default function EditListingPage() {
     const [newImages, setNewImages] = useState<File[]>([])
     const [removedImageIds, setRemovedImageIds] = useState<string[]>([])
 
+    const handleConditionChange = (value: string) => {
+        setFormData({
+            ...formData,
+            condition: value as Listing['condition']
+        })
+    }
+
+    const handleStatusChange = (value: string) => {
+        setFormData({
+            ...formData,
+            status: value as Listing['status']
+        })
+    }
+
     useEffect(() => {
         if (user?.id && listingId) {
             fetchListing()
@@ -223,7 +237,7 @@ export default function EditListingPage() {
                                     type="radio"
                                     value={cond.value}
                                     checked={formData.condition === cond.value}
-                                    onChange={(e) => setFormData({ ...formData, condition: e.target.value as any })}
+                                    onChange={(e) => handleConditionChange(e.target.value)}
                                     className="mr-3"
                                     style={{ accentColor: 'var(--brand-primary)' }}
                                 />
@@ -259,7 +273,7 @@ export default function EditListingPage() {
                     <select
                         id="status"
                         value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                        onChange={(e) => handleStatusChange(e.target.value)}
                         className="w-full px-4 py-2 rounded-lg focus:outline-none"
                         style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-lighter)', color: 'var(--text-primary)' }}
                     >

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { ShoppingBag, Star, MessageSquare, Tag, Users } from 'lucide-react'
+import { ShoppingBag, MessageSquare, Tag, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Activity {
@@ -60,105 +60,101 @@ export default function ActivityFeed({ userId }: ActivityFeedProps) {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        if (userId) {
-            fetchActivity()
-        } else {
-            setLoading(false)
-        }
-    }, [userId])
+        const fetchActivity = async () => {
+            if (!userId) {
+                setLoading(false)
+                return
+            }
 
-    const fetchActivity = async () => {
-        const supabase = createClient()
-        const activities: Activity[] = []
+            const supabase = createClient()
+            const nextActivities: Activity[] = []
 
-        // Fetch user's recent listings (created & sold)
-        const { data: recentListings } = await supabase
-            .from('listings')
-            .select('id, title, status, created_at, updated_at')
-            .eq('user_id', userId!)
-            .order('updated_at', { ascending: false })
-            .limit(10)
+            const { data: recentListings } = await supabase
+                .from('listings')
+                .select('id, title, status, created_at, updated_at')
+                .eq('user_id', userId)
+                .order('updated_at', { ascending: false })
+                .limit(10)
 
-        if (recentListings) {
-            for (const listing of recentListings) {
-                if (listing.status === 'sold') {
-                    activities.push({
-                        id: `sold-${listing.id}`,
-                        type: 'listing_sold',
-                        title: 'Item Sold',
+            if (recentListings) {
+                for (const listing of recentListings) {
+                    if (listing.status === 'sold') {
+                        nextActivities.push({
+                            id: `sold-${listing.id}`,
+                            type: 'listing_sold',
+                            title: 'Item Sold',
+                            description: listing.title,
+                            time: timeAgo(listing.updated_at),
+                            rawTime: listing.updated_at,
+                        })
+                    }
+                    nextActivities.push({
+                        id: `created-${listing.id}`,
+                        type: 'listing_created',
+                        title: 'Listed',
                         description: listing.title,
-                        time: timeAgo(listing.updated_at),
-                        rawTime: listing.updated_at,
+                        time: timeAgo(listing.created_at),
+                        rawTime: listing.created_at,
                     })
                 }
-                activities.push({
-                    id: `created-${listing.id}`,
-                    type: 'listing_created',
-                    title: 'Listed',
-                    description: listing.title,
-                    time: timeAgo(listing.created_at),
-                    rawTime: listing.created_at,
-                })
             }
-        }
 
-        // Fetch recent messages received
-        const { data: convos } = await supabase
-            .from('conversations')
-            .select('id')
-            .or(`participant_1.eq.${userId},participant_2.eq.${userId}`)
+            const { data: convos } = await supabase
+                .from('conversations')
+                .select('id')
+                .or(`participant_1.eq.${userId},participant_2.eq.${userId}`)
 
-        if (convos && convos.length > 0) {
-            const convoIds = convos.map(c => c.id)
-            const { data: recentMessages } = await supabase
-                .from('messages')
-                .select('id, text, created_at, sender_id')
-                .in('conversation_id', convoIds)
-                .neq('sender_id', userId!)
+            if (convos && convos.length > 0) {
+                const convoIds = convos.map((c) => c.id)
+                const { data: recentMessages } = await supabase
+                    .from('messages')
+                    .select('id, text, created_at, sender_id')
+                    .in('conversation_id', convoIds)
+                    .neq('sender_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(5)
+
+                if (recentMessages) {
+                    for (const msg of recentMessages) {
+                        nextActivities.push({
+                            id: `msg-${msg.id}`,
+                            type: 'message_received',
+                            title: 'New Message',
+                            description: msg.text.length > 60 ? `${msg.text.substring(0, 60)}...` : msg.text,
+                            time: timeAgo(msg.created_at),
+                            rawTime: msg.created_at,
+                        })
+                    }
+                }
+            }
+
+            const { data: recentPosts } = await supabase
+                .from('posts')
+                .select('id, title, created_at')
+                .eq('user_id', userId)
                 .order('created_at', { ascending: false })
                 .limit(5)
 
-            if (recentMessages) {
-                for (const msg of recentMessages) {
-                    activities.push({
-                        id: `msg-${msg.id}`,
-                        type: 'message_received',
-                        title: 'New Message',
-                        description: msg.text.length > 60 ? msg.text.substring(0, 60) + '…' : msg.text,
-                        time: timeAgo(msg.created_at),
-                        rawTime: msg.created_at,
+            if (recentPosts) {
+                for (const post of recentPosts) {
+                    nextActivities.push({
+                        id: `post-${post.id}`,
+                        type: 'community_post',
+                        title: 'Community Post',
+                        description: post.title,
+                        time: timeAgo(post.created_at),
+                        rawTime: post.created_at,
                     })
                 }
             }
+
+            nextActivities.sort((a, b) => new Date(b.rawTime).getTime() - new Date(a.rawTime).getTime())
+            setActivities(nextActivities.slice(0, 6))
+            setLoading(false)
         }
 
-        // Fetch recent community posts by user
-        const { data: recentPosts } = await supabase
-            .from('posts')
-            .select('id, title, created_at')
-            .eq('user_id', userId!)
-            .order('created_at', { ascending: false })
-            .limit(5)
-
-        if (recentPosts) {
-            for (const post of recentPosts) {
-                activities.push({
-                    id: `post-${post.id}`,
-                    type: 'community_post',
-                    title: 'Community Post',
-                    description: post.title,
-                    time: timeAgo(post.created_at),
-                    rawTime: post.created_at,
-                })
-            }
-        }
-
-        // Sort by most recent
-        activities.sort((a, b) => new Date(b.rawTime).getTime() - new Date(a.rawTime).getTime())
-
-        setActivities(activities.slice(0, 6))
-        setLoading(false)
-    }
+        void fetchActivity()
+    }, [userId])
 
     if (loading) {
         return (

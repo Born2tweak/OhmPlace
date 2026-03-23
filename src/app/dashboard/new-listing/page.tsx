@@ -24,6 +24,13 @@ export default function NewListingPage() {
     })
     const [images, setImages] = useState<File[]>([])
 
+    const handleConditionChange = (value: string) => {
+        setFormData({
+            ...formData,
+            condition: value as ListingInsert['condition']
+        })
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
@@ -166,7 +173,7 @@ export default function NewListingPage() {
                                     type="radio"
                                     value={cond.value}
                                     checked={formData.condition === cond.value}
-                                    onChange={(e) => setFormData({ ...formData, condition: e.target.value as any })}
+                                    onChange={(e) => handleConditionChange(e.target.value)}
                                     className="mr-3"
                                     style={{ accentColor: 'var(--brand-primary)' }}
                                 />

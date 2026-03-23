@@ -34,39 +34,30 @@ function applyTheme(resolved: 'light' | 'dark') {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>('system')
-    const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light')
-    const [mounted, setMounted] = useState(false)
+    const [theme, setThemeState] = useState<Theme>(() => {
+        if (typeof window === 'undefined') return 'system'
+        return (localStorage.getItem('ohm_theme') as Theme | null) || 'system'
+    })
+    const mounted = typeof window !== 'undefined'
+    const resolvedTheme = theme === 'system' ? getSystemTheme() : theme
 
-    // Load saved theme on mount
-    useEffect(() => {
-        const saved = localStorage.getItem('ohm_theme') as Theme | null
-        if (saved) setThemeState(saved)
-        setMounted(true)
-    }, [])
-
-    // Apply theme to DOM
     useEffect(() => {
         if (!mounted) return
 
         if (theme === 'system') {
-            const resolved = getSystemTheme()
-            setResolvedTheme(resolved)
-            applyTheme(resolved)
+            applyTheme(resolvedTheme)
 
             const mq = window.matchMedia('(prefers-color-scheme: dark)')
             const handler = (e: MediaQueryListEvent) => {
                 const r = e.matches ? 'dark' : 'light'
-                setResolvedTheme(r)
                 applyTheme(r)
             }
             mq.addEventListener('change', handler)
             return () => mq.removeEventListener('change', handler)
         } else {
-            setResolvedTheme(theme)
-            applyTheme(theme)
+            applyTheme(resolvedTheme)
         }
-    }, [theme, mounted])
+    }, [mounted, resolvedTheme, theme])
 
     const setTheme = (t: Theme) => {
         setThemeState(t)

@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback, use } from 'react'
+import React, { useState, useEffect, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser, useSession } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Truck, Loader2, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Loader2, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import type { Listing, ListingImage } from '@/types/database'
 import { useToast } from '@/components/Toast'
 
@@ -19,6 +19,11 @@ interface ListingWithImages extends Listing {
     }
 }
 
+type CarouselTouchState = {
+    startX: number | null
+    startY: number | null
+}
+
 export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
     const { user, isLoaded } = useUser()
@@ -30,6 +35,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
     const [messaging, setMessaging] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const { toast } = useToast()
+    const carouselTouchRef = useRef<CarouselTouchState>({ startX: null, startY: null })
 
     useEffect(() => {
         const fetchListing = async () => {
@@ -117,9 +123,10 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
 
             // Redirect to messages
             router.push(`/dashboard/messages?id=${conversationId}`)
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error starting conversation:', error)
-            alert(`Failed to start conversation: ${error.message || JSON.stringify(error)}`)
+            const message = error instanceof Error ? error.message : JSON.stringify(error)
+            alert(`Failed to start conversation: ${message}`)
             setMessaging(false)
         }
     }
@@ -184,12 +191,13 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                                 className="relative aspect-video overflow-hidden touch-pan-y"
                                 onTouchStart={(e) => {
                                     const touch = e.touches[0]
-                                        ; (e.currentTarget as any)._touchStartX = touch.clientX
-                                        ; (e.currentTarget as any)._touchStartY = touch.clientY
+                                    carouselTouchRef.current = {
+                                        startX: touch.clientX,
+                                        startY: touch.clientY
+                                    }
                                 }}
                                 onTouchEnd={(e) => {
-                                    const startX = (e.currentTarget as any)._touchStartX
-                                    const startY = (e.currentTarget as any)._touchStartY
+                                    const { startX, startY } = carouselTouchRef.current
                                     if (startX == null || startY == null) return
                                     const endX = e.changedTouches[0].clientX
                                     const endY = e.changedTouches[0].clientY
@@ -203,6 +211,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                                             setSelectedImageIndex(prev => prev - 1)
                                         }
                                     }
+                                    carouselTouchRef.current = { startX: null, startY: null }
                                 }}
                             >
                                 <div

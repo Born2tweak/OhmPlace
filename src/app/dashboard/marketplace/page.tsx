@@ -47,10 +47,39 @@ export default function MarketplacePage() {
             .eq('listing_id', listingId)
             .order('order', { ascending: true })
         return images || []
-    }, [])
+    }, [supabase])
+
+    const fetchListings = useCallback(async () => {
+        setLoading(true)
+        const { data: listingsData, error } = await supabase
+            .from('listings')
+            .select('*')
+            .eq('status', 'available')
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('Error fetching listings:', error)
+            setLoading(false)
+            return
+        }
+
+        if (listingsData) {
+            const listingsWithImages = await Promise.all(
+                listingsData.map(async (listing) => {
+                    const images = await fetchListingImages(listing.id)
+                    return { ...listing, images }
+                })
+            )
+            setListings(listingsWithImages)
+        }
+        setLoading(false)
+        initialLoadDone.current = true
+    }, [fetchListingImages, supabase])
 
     useEffect(() => {
-        fetchListings()
+        const timeoutId = window.setTimeout(() => {
+            void fetchListings()
+        }, 0)
 
         // Subscribe to real-time listing changes
         const channel = supabase
@@ -97,36 +126,10 @@ export default function MarketplacePage() {
             .subscribe()
 
         return () => {
+            window.clearTimeout(timeoutId)
             supabase.removeChannel(channel)
         }
-    }, [])
-
-    const fetchListings = async () => {
-        setLoading(true)
-        const { data: listingsData, error } = await supabase
-            .from('listings')
-            .select('*')
-            .eq('status', 'available')
-            .order('created_at', { ascending: false })
-
-        if (error) {
-            console.error('Error fetching listings:', error)
-            setLoading(false)
-            return
-        }
-
-        if (listingsData) {
-            const listingsWithImages = await Promise.all(
-                listingsData.map(async (listing) => {
-                    const images = await fetchListingImages(listing.id)
-                    return { ...listing, images }
-                })
-            )
-            setListings(listingsWithImages)
-        }
-        setLoading(false)
-        initialLoadDone.current = true
-    }
+    }, [fetchListingImages, fetchListings, supabase, toast])
 
     const filteredListings = listings.filter(listing => {
         const matchesSearch =
