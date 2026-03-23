@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { clerkClient } from '@clerk/nextjs/server'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase/server'
 import type { Conversation, Profile } from '@/types/database'
@@ -10,6 +11,13 @@ type ConversationWithUser = Conversation & {
         full_name?: string
         avatar_url?: string
     }
+}
+
+type ClerkUserSummary = {
+    id: string
+    full_name: string | null
+    email: string
+    clerk_avatar: string | null
 }
 
 export async function GET() {
@@ -27,35 +35,54 @@ export async function GET() {
             .or(`participant_1.eq.${authUser.userId},participant_2.eq.${authUser.userId}`)
             .order('last_message_at', { ascending: false })
 
-        if (error) {
+        if (error || !data) {
             console.error('Error fetching conversations:', error)
             return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 })
         }
 
-        // Enrich with profile data
-        const userIds = new Set<string>()
-        data.forEach((c) => {
-            userIds.add(c.participant_1)
-            userIds.add(c.participant_2)
-        })
+        const otherUserIds = [...new Set(
+            data.map((conversation) =>
+                conversation.participant_1 === authUser.userId ? conversation.participant_2 : conversation.participant_1
+            )
+        )]
 
-        const { data: profiles } = await supabase
-            .from('profiles')
-            .select('*')
-            .in('id', Array.from(userIds))
+        const client = await clerkClient()
+        const [clerkUsers, profilesResult] = await Promise.all([
+            Promise.all(
+                otherUserIds.map(async (id): Promise<ClerkUserSummary> => {
+                    try {
+                        const user = await client.users.getUser(id)
+                        return {
+                            id,
+                            full_name: user.fullName || user.firstName || user.username || 'Unknown User',
+                            email: user.primaryEmailAddress?.emailAddress || '',
+                            clerk_avatar: user.imageUrl,
+                        }
+                    } catch {
+                        return { id, full_name: null, email: '', clerk_avatar: null }
+                    }
+                })
+            ),
+            supabase.from('profiles').select('id, full_name, avatar_url, email').in('id', otherUserIds),
+        ])
 
-        const profileMap = new Map<string, Profile>((profiles || []).map((p) => [p.id, p]))
+        const clerkMap = new Map<string, ClerkUserSummary>(clerkUsers.map((user) => [user.id, user]))
+        const profileMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'email'>>(
+            (profilesResult.data || []).map((profile) => [profile.id, profile])
+        )
 
-        const enriched: ConversationWithUser[] = data.map((c) => {
-            const otherUserId = c.participant_1 === authUser.userId ? c.participant_2 : c.participant_1
+        const enriched: ConversationWithUser[] = data.map((conversation) => {
+            const otherUserId = conversation.participant_1 === authUser.userId ? conversation.participant_2 : conversation.participant_1
+            const clerk = clerkMap.get(otherUserId)
             const profile = profileMap.get(otherUserId)
+
             return {
-                ...c,
+                ...conversation,
                 other_user: {
                     id: otherUserId,
-                    email: profile?.email || 'user@campus.edu',
-                    full_name: profile?.full_name || undefined,
-                    avatar_url: profile?.avatar_url || undefined,
+                    email: clerk?.email || profile?.email || '',
+                    full_name: profile?.full_name || clerk?.full_name || 'Unknown User',
+                    avatar_url: profile?.avatar_url || clerk?.clerk_avatar || undefined,
                 }
             }
         })
@@ -92,8 +119,6 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase()
 
     try {
-        // Check for existing conversation (bidirectional) — use limit(1) not maybeSingle()
-        // because maybeSingle() errors when >1 row exists (e.g. both A→B and B→A rows)
         const { data: existingRows, error: fetchError } = await supabase
             .from('conversations')
             .select('id')
@@ -111,7 +136,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ conversationId: existingRows[0].id })
         }
 
-        // Create new conversation — canonicalize order so (A,B) and (B,A) always produce the same row
         const [p1, p2] = [authUser.userId, participantId].sort()
         const { data: newConvo, error: createError } = await supabase
             .from('conversations')
@@ -124,7 +148,6 @@ export async function POST(request: NextRequest) {
             .single()
 
         if (createError) {
-            // Handle race condition: another request may have just created the same conversation
             if (createError.code === '23505') {
                 const { data: racedConvo } = await supabase
                     .from('conversations')

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag, Plus, X, UserPlus } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import Link from 'next/link'
@@ -18,7 +18,7 @@ type ConversationWithUser = ConversationRow & {
         avatar_url?: string
     }
 }
-type SearchUserResult = {
+type UserSearchResult = {
     id: string
     full_name: string
     avatar_url: string
@@ -39,6 +39,7 @@ function StatusIcon({ status }: { status?: MessageStatus }) {
 function MessagesContent() {
     const { user, isLoaded } = useUser()
     const searchParams = useSearchParams()
+    const router = useRouter()
     const { toast } = useToast()
 
     const [conversations, setConversations] = useState<ConversationWithUser[]>([])
@@ -51,7 +52,7 @@ function MessagesContent() {
     const [mobileShowChat, setMobileShowChat] = useState(false)
     const [showNewConvo, setShowNewConvo] = useState(false)
     const [userSearchQuery, setUserSearchQuery] = useState('')
-    const [userSearchResults, setUserSearchResults] = useState<SearchUserResult[]>([])
+    const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([])
     const [searchingUsers, setSearchingUsers] = useState(false)
     const [startingConvo, setStartingConvo] = useState(false)
 
@@ -62,48 +63,10 @@ function MessagesContent() {
 
     const fetchConversations = async (): Promise<ConversationWithUser[]> => {
         try {
-            const response = await fetch('/api/conversations')
-            if (!response.ok) throw new Error('Failed to fetch conversations')
-
-            const data = await response.json() as ConversationWithUser[]
+            const res = await fetch('/api/conversations')
+            if (!res.ok) throw new Error('Failed to fetch')
+            const data = await res.json() as ConversationWithUser[]
             setConversations(data)
-
-            const missingIds = Array.from(new Set(
-                data
-                    .filter((conversation) => !conversation.other_user?.full_name || !conversation.other_user?.avatar_url)
-                    .map((conversation) => conversation.other_user?.id)
-                    .filter((id): id is string => Boolean(id))
-            ))
-
-            await Promise.all(missingIds.map(async (id) => {
-                try {
-                    const res = await fetch(`/api/users/${id}`)
-                    if (!res.ok) return
-
-                    const userData = await res.json() as {
-                        email?: string
-                        full_name?: string
-                        avatar_url?: string
-                    }
-
-                    setConversations((prev) => prev.map((conversation) => {
-                        if (conversation.other_user?.id !== id) return conversation
-
-                        return {
-                            ...conversation,
-                            other_user: {
-                                id,
-                                email: userData.email || conversation.other_user.email,
-                                full_name: userData.full_name || conversation.other_user.full_name,
-                                avatar_url: userData.avatar_url || conversation.other_user.avatar_url
-                            }
-                        }
-                    }))
-                } catch (err) {
-                    console.error(`Failed to fetch user ${id}`, err)
-                }
-            }))
-
             return data
         } catch (err) {
             console.error('Error fetching conversations:', err)
@@ -111,12 +74,11 @@ function MessagesContent() {
         }
     }
 
-    const fetchMessages = async (conversationId: string) => {
+    const fetchMessages = async (convoId: string) => {
         try {
-            const response = await fetch(`/api/conversations/${conversationId}/messages`)
-            if (!response.ok) throw new Error('Failed to fetch messages')
-
-            const data = await response.json() as Message[]
+            const res = await fetch(`/api/conversations/${convoId}/messages`)
+            if (!res.ok) throw new Error('Failed to fetch')
+            const data = await res.json() as Message[]
             setMessages(data)
         } catch (err) {
             console.error('Error fetching messages:', err)
@@ -181,7 +143,7 @@ function MessagesContent() {
         const text = messageInput.trim()
         setMessageInput('')
 
-        const optimisticMessage: Message = {
+        const optimisticMsg: Message = {
             id: `temp-${Date.now()}`,
             conversation_id: selectedConvoId,
             sender_id: user.id,
@@ -189,21 +151,21 @@ function MessagesContent() {
             status: 'sent',
             created_at: new Date().toISOString(),
         }
-        setMessages((prev) => [...prev, optimisticMessage])
+        setMessages((prev) => [...prev, optimisticMsg])
 
         try {
-            const response = await fetch(`/api/conversations/${selectedConvoId}/messages`, {
+            const res = await fetch(`/api/conversations/${selectedConvoId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text }),
             })
 
-            if (!response.ok) {
+            if (!res.ok) {
                 throw new Error('Failed to send')
             }
 
-            const sentMessage = await response.json() as Message
-            setMessages((prev) => prev.map((message) => message.id === optimisticMessage.id ? sentMessage : message))
+            const sentMessage = await res.json() as Message
+            setMessages((prev) => prev.map((message) => message.id === optimisticMsg.id ? sentMessage : message))
             setConversations((prev) => prev.map((conversation) =>
                 conversation.id === selectedConvoId
                     ? { ...conversation, last_message_text: text, last_message_at: new Date().toISOString() }
@@ -212,15 +174,19 @@ function MessagesContent() {
         } catch (error) {
             console.error('Error sending message:', error)
             toast('Failed to send message', 'error')
-            setMessages((prev) => prev.filter((message) => message.id !== optimisticMessage.id))
+            setMessages((prev) => prev.filter((message) => message.id !== optimisticMsg.id))
             setMessageInput(text)
         }
     }
 
+    const filteredConversations = conversations.filter((conversation) =>
+        conversation.other_user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        conversation.last_message_text?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
     const handleUserSearch = (query: string) => {
         setUserSearchQuery(query)
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
-
         if (query.trim().length < 2) {
             setUserSearchResults([])
             return
@@ -229,9 +195,9 @@ function MessagesContent() {
         setSearchingUsers(true)
         searchTimeoutRef.current = setTimeout(async () => {
             try {
-                const response = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`)
-                if (response.ok) {
-                    const data = await response.json() as SearchUserResult[]
+                const res = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`)
+                if (res.ok) {
+                    const data = await res.json() as UserSearchResult[]
                     setUserSearchResults(data)
                 }
             } catch (err) {
@@ -245,20 +211,20 @@ function MessagesContent() {
     const startNewConversation = async (participantId: string) => {
         setStartingConvo(true)
         try {
-            const response = await fetch('/api/conversations', {
+            const res = await fetch('/api/conversations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ participantId }),
             })
-            const data = await response.json() as { conversationId?: string; error?: string }
-            if (!response.ok || !data.conversationId) throw new Error(data.error || 'Failed to start conversation')
+            const data = await res.json() as { conversationId?: string; error?: string }
+            if (!res.ok || !data.conversationId) throw new Error(data.error || 'Failed to start conversation')
 
             setShowNewConvo(false)
             setUserSearchQuery('')
             setUserSearchResults([])
             setSelectedConvoId(data.conversationId)
             setMobileShowChat(true)
-            window.location.href = `/dashboard/messages?id=${data.conversationId}`
+            router.replace(`/dashboard/messages?id=${data.conversationId}`)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to start conversation'
             toast(message, 'error')
@@ -266,11 +232,6 @@ function MessagesContent() {
             setStartingConvo(false)
         }
     }
-
-    const filteredConversations = conversations.filter((conversation) =>
-        conversation.other_user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        conversation.last_message_text?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
 
     const selectedConvo = conversations.find((conversation) => conversation.id === selectedConvoId)
 
@@ -436,7 +397,7 @@ function MessagesContent() {
                     )}
                 </div>
             </div>
-
+            
             <div className={`flex-1 flex flex-col ${mobileShowChat ? 'flex' : 'hidden md:flex'}`}>
                 {selectedConvo ? (
                     <>
