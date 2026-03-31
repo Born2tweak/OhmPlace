@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/client'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-const ALLOWED_TYPES_WITH_GIF = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+const ALLOWED_TYPES_WITH_GIF = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
 
 export async function uploadListingImage(
     file: File,
