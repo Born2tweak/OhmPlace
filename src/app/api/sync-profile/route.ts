@@ -3,6 +3,17 @@ import { getAuthenticatedUser } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase/server'
 import { clerkClient } from '@clerk/nextjs/server'
 
+function isPlaceholderName(name: string | null | undefined): boolean {
+    if (!name) return true
+    const lower = name.toLowerCase().trim()
+    const parts = lower.split(/\s+/)
+    return (
+        lower === 'unknown user' ||
+        parts.every(p => p === 'user') ||
+        (parts.length > 1 && new Set(parts).size === 1)
+    )
+}
+
 export async function POST() {
     const authUser = await getAuthenticatedUser()
     if (!authUser) {
@@ -16,10 +27,14 @@ export async function POST() {
         const client = await clerkClient()
         const clerkUser = await client.users.getUser(authUser.userId)
 
-        const full_name = clerkUser.fullName ||
+        const rawName =
+            clerkUser.fullName ||
             [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') ||
-            authUser.username ||
-            authUser.email.split('@')[0]
+            null
+
+        const full_name = isPlaceholderName(rawName)
+            ? authUser.email.split('@')[0]
+            : rawName!
 
         // Check if they have a custom avatar already uploaded
         const { data: existing } = await supabase

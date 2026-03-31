@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Send, Reply, ChevronDown, ChevronUp } from 'lucide-react'
+import React, { useState, useRef } from 'react'
+import { Send, Reply, ChevronDown, ChevronUp, Image as ImageIcon, X } from 'lucide-react'
 import VoteButton from './VoteButton'
+import { uploadCommentImage } from '@/lib/supabase/storage'
 
 interface Comment {
     id: string
@@ -15,13 +16,15 @@ interface Comment {
     userVote: number
     parent_id: string | null
     avatar_url?: string | null
+    image_url?: string | null
 }
 
 interface CommentSectionProps {
     comments: Comment[]
     currentUserId: string
     postAuthorId: string
-    onAddComment: (body: string, parentId?: string) => Promise<void>
+    postId: string
+    onAddComment: (body: string, parentId?: string, imageUrl?: string) => Promise<void>
     onVoteComment: (commentId: string, vote: number) => void
 }
 
@@ -123,7 +126,19 @@ function CommentItem({
                 </div>
 
                 {/* Body */}
-                <p className="text-sm mb-2 whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{comment.body}</p>
+                {comment.body && (
+                    <p className="text-sm mb-2 whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{comment.body}</p>
+                )}
+                {comment.image_url && (
+                    <a href={comment.image_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
+                        <img
+                            src={comment.image_url}
+                            alt="Image"
+                            className="max-h-48 w-auto rounded-xl object-cover"
+                            style={{ maxWidth: '100%' }}
+                        />
+                    </a>
+                )}
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
@@ -168,13 +183,25 @@ function CommentItem({
     )
 }
 
-export default function CommentSection({ comments, currentUserId, postAuthorId, onAddComment, onVoteComment }: CommentSectionProps) {
+export default function CommentSection({ comments, currentUserId, postAuthorId, postId, onAddComment, onVoteComment }: CommentSectionProps) {
     const [newComment, setNewComment] = useState('')
     const [loading, setLoading] = useState(false)
     const [sortBy, setSortBy] = useState<'best' | 'new'>('best')
     const [replyingTo, setReplyingTo] = useState<string | null>(null)
     const [replyText, setReplyText] = useState('')
     const [replyLoading, setReplyLoading] = useState(false)
+
+    // Image state for top-level comment
+    const [commentImage, setCommentImage] = useState<File | null>(null)
+    const [commentImagePreview, setCommentImagePreview] = useState<string | null>(null)
+    const [uploadingComment, setUploadingComment] = useState(false)
+    const commentImageRef = useRef<HTMLInputElement>(null)
+
+    // Image state for replies
+    const [replyImage, setReplyImage] = useState<File | null>(null)
+    const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null)
+    const [uploadingReply, setUploadingReply] = useState(false)
+    const replyImageRef = useRef<HTMLInputElement>(null)
 
     const tree = buildCommentTree(
         [...comments].sort((a, b) => {
@@ -185,27 +212,45 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!newComment.trim() || loading) return
+        if ((!newComment.trim() && !commentImage) || loading) return
 
         setLoading(true)
+        setUploadingComment(!!commentImage)
         try {
-            await onAddComment(newComment.trim())
+            let imageUrl: string | undefined
+            if (commentImage) {
+                imageUrl = await uploadCommentImage(commentImage, postId)
+                setCommentImage(null)
+                if (commentImagePreview) URL.revokeObjectURL(commentImagePreview)
+                setCommentImagePreview(null)
+            }
+            await onAddComment(newComment.trim(), undefined, imageUrl)
             setNewComment('')
         } finally {
             setLoading(false)
+            setUploadingComment(false)
         }
     }
 
     const handleReplySubmit = async (parentId: string) => {
-        if (!replyText.trim() || replyLoading) return
+        if ((!replyText.trim() && !replyImage) || replyLoading) return
 
         setReplyLoading(true)
+        setUploadingReply(!!replyImage)
         try {
-            await onAddComment(replyText.trim(), parentId)
+            let imageUrl: string | undefined
+            if (replyImage) {
+                imageUrl = await uploadCommentImage(replyImage, postId)
+                setReplyImage(null)
+                if (replyImagePreview) URL.revokeObjectURL(replyImagePreview)
+                setReplyImagePreview(null)
+            }
+            await onAddComment(replyText.trim(), parentId, imageUrl)
             setReplyText('')
             setReplyingTo(null)
         } finally {
             setReplyLoading(false)
+            setUploadingReply(false)
         }
     }
 
@@ -218,12 +263,56 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
         <div>
             {/* Top-level comment input */}
             <form onSubmit={handleSubmit} className="mb-6">
-                <div className="flex gap-3">
+                {/* Image preview */}
+                {commentImagePreview && (
+                    <div className="relative inline-block mb-2">
+                        <img
+                            src={commentImagePreview}
+                            alt="Attachment preview"
+                            className="h-16 w-auto rounded-xl object-cover border"
+                            style={{ border: '1px solid var(--border-subtle)' }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (commentImagePreview) URL.revokeObjectURL(commentImagePreview)
+                                setCommentImage(null)
+                                setCommentImagePreview(null)
+                            }}
+                            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-gray-800 text-white flex items-center justify-center"
+                        >
+                            <X className="w-3 h-3" />
+                        </button>
+                    </div>
+                )}
+                <div className="flex gap-2">
+                    <input
+                        ref={commentImageRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            setCommentImage(file)
+                            setCommentImagePreview(URL.createObjectURL(file))
+                            e.target.value = ''
+                        }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => commentImageRef.current?.click()}
+                        className="p-2 rounded-full flex-shrink-0 transition-colors hover:opacity-80"
+                        style={{ color: 'var(--text-muted)', background: 'var(--bg-lighter)' }}
+                        title="Attach image"
+                    >
+                        <ImageIcon className="w-4 h-4" />
+                    </button>
                     <input
                         type="text"
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Join the conversation..."
+                        placeholder={commentImage ? 'Add a caption...' : 'Join the conversation...'}
                         maxLength={2000}
                         className="flex-1 px-4 py-2.5 rounded-full focus:outline-none focus:ring-2 text-sm"
                         style={{
@@ -234,7 +323,7 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
                     />
                     <button
                         type="submit"
-                        disabled={!newComment.trim() || loading}
+                        disabled={(!newComment.trim() && !commentImage) || loading || uploadingComment}
                         className="px-4 py-2.5 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         style={{ background: 'var(--brand-primary)' }}
                     >
@@ -278,18 +367,62 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
                         {/* Inline reply form */}
                         {replyingTo === comment.id && (
                             <div className="pl-4 md:pl-6 pb-3" style={{ borderLeft: '2px solid var(--border-subtle)' }}>
+                                {/* Reply image preview */}
+                                {replyImagePreview && (
+                                    <div className="relative inline-block mb-2">
+                                        <img
+                                            src={replyImagePreview}
+                                            alt="Attachment preview"
+                                            className="h-14 w-auto rounded-xl object-cover border"
+                                            style={{ border: '1px solid var(--border-subtle)' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (replyImagePreview) URL.revokeObjectURL(replyImagePreview)
+                                                setReplyImage(null)
+                                                setReplyImagePreview(null)
+                                            }}
+                                            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-gray-800 text-white flex items-center justify-center"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="flex gap-2">
+                                    <input
+                                        ref={replyImageRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0]
+                                            if (!file) return
+                                            setReplyImage(file)
+                                            setReplyImagePreview(URL.createObjectURL(file))
+                                            e.target.value = ''
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => replyImageRef.current?.click()}
+                                        className="p-2 rounded-full flex-shrink-0 transition-colors hover:opacity-80"
+                                        style={{ color: 'var(--text-muted)', background: 'var(--bg-lighter)' }}
+                                        title="Attach image"
+                                    >
+                                        <ImageIcon className="w-4 h-4" />
+                                    </button>
                                     <input
                                         type="text"
                                         value={replyText}
                                         onChange={(e) => setReplyText(e.target.value)}
-                                        placeholder={`Reply to ${comment.username}...`}
+                                        placeholder={replyImage ? 'Add a caption...' : `Reply to ${comment.username}...`}
                                         maxLength={2000}
                                         autoFocus
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && !e.shiftKey) {
                                                 e.preventDefault()
-                                                handleReplySubmit(comment.id)
+                                                void handleReplySubmit(comment.id)
                                             }
                                             if (e.key === 'Escape') {
                                                 setReplyingTo(null)
@@ -303,8 +436,8 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
                                         }}
                                     />
                                     <button
-                                        onClick={() => handleReplySubmit(comment.id)}
-                                        disabled={!replyText.trim() || replyLoading}
+                                        onClick={() => void handleReplySubmit(comment.id)}
+                                        disabled={(!replyText.trim() && !replyImage) || replyLoading || uploadingReply}
                                         className="px-3 py-2 text-white rounded-lg disabled:opacity-50 text-sm transition-colors"
                                         style={{ background: 'var(--brand-primary)' }}
                                     >
@@ -339,18 +472,61 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
             <React.Fragment key={`reply-form-${reply.id}`}>
                 {replyingTo === reply.id && (
                     <div className="pl-8 md:pl-12 pb-3" style={{ borderLeft: '2px solid var(--border-subtle)', marginLeft: '1rem' }}>
+                        {replyImagePreview && (
+                            <div className="relative inline-block mb-2">
+                                <img
+                                    src={replyImagePreview}
+                                    alt="Attachment preview"
+                                    className="h-14 w-auto rounded-xl object-cover border"
+                                    style={{ border: '1px solid var(--border-subtle)' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (replyImagePreview) URL.revokeObjectURL(replyImagePreview)
+                                        setReplyImage(null)
+                                        setReplyImagePreview(null)
+                                    }}
+                                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-gray-800 text-white flex items-center justify-center"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </div>
+                        )}
                         <div className="flex gap-2">
+                            <input
+                                ref={replyImageRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (!file) return
+                                    setReplyImage(file)
+                                    setReplyImagePreview(URL.createObjectURL(file))
+                                    e.target.value = ''
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => replyImageRef.current?.click()}
+                                className="p-2 rounded-full flex-shrink-0 transition-colors hover:opacity-80"
+                                style={{ color: 'var(--text-muted)', background: 'var(--bg-lighter)' }}
+                                title="Attach image"
+                            >
+                                <ImageIcon className="w-4 h-4" />
+                            </button>
                             <input
                                 type="text"
                                 value={replyText}
                                 onChange={(e) => setReplyText(e.target.value)}
-                                placeholder={`Reply to ${reply.username}...`}
+                                placeholder={replyImage ? 'Add a caption...' : `Reply to ${reply.username}...`}
                                 maxLength={2000}
                                 autoFocus
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault()
-                                        handleReplySubmit(reply.id)
+                                        void handleReplySubmit(reply.id)
                                     }
                                     if (e.key === 'Escape') {
                                         setReplyingTo(null)
@@ -364,8 +540,8 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
                                 }}
                             />
                             <button
-                                onClick={() => handleReplySubmit(reply.id)}
-                                disabled={!replyText.trim() || replyLoading}
+                                onClick={() => void handleReplySubmit(reply.id)}
+                                disabled={(!replyText.trim() && !replyImage) || replyLoading || uploadingReply}
                                 className="px-3 py-2 text-white rounded-lg disabled:opacity-50 text-sm transition-colors"
                                 style={{ background: 'var(--brand-primary)' }}
                             >

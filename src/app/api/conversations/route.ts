@@ -20,6 +20,17 @@ type ClerkUserSummary = {
     clerk_avatar: string | null
 }
 
+function isPlaceholderName(name: string | null | undefined): boolean {
+    if (!name) return true
+    const lower = name.toLowerCase().trim()
+    const parts = lower.split(/\s+/)
+    return (
+        lower === 'unknown user' ||
+        parts.every(p => p === 'user') ||
+        (parts.length > 1 && new Set(parts).size === 1)
+    )
+}
+
 export async function GET() {
     const authUser = await getAuthenticatedUser()
     if (!authUser) {
@@ -62,11 +73,15 @@ export async function GET() {
 
         const clerkUsers = (clerkResponse.data || []).map((user): ClerkUserSummary => ({
             id: user.id,
-            full_name:
-                user.fullName ||
-                [user.firstName, user.lastName].filter(Boolean).join(' ') ||
-                user.username ||
-                null,
+            full_name: (() => {
+                const raw =
+                    user.fullName ||
+                    [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+                    user.username ||
+                    null
+                if (isPlaceholderName(raw)) return null
+                return raw
+            })(),
             email: user.primaryEmailAddress?.emailAddress || '',
             clerk_avatar: user.imageUrl,
         }))
