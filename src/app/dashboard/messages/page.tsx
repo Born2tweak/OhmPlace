@@ -179,10 +179,19 @@ function MessagesContent() {
         if (pendingImage) {
             setUploadingImage(true)
             try {
-                uploadedImageUrl = await uploadMessageImage(pendingImage, selectedConvoId)
+                const fd = new FormData()
+                fd.append('file', pendingImage)
+                fd.append('conversationId', selectedConvoId)
+                const uploadRes = await fetch('/api/upload/message-image', { method: 'POST', body: fd })
+                if (!uploadRes.ok) {
+                    const err = await uploadRes.json() as { error?: string }
+                    throw new Error(err.error || 'Upload failed')
+                }
+                const { url } = await uploadRes.json() as { url: string }
+                uploadedImageUrl = url
             } catch (err) {
                 console.error('Image upload failed:', err)
-                toast('Failed to upload image', 'error')
+                toast(err instanceof Error ? err.message : 'Failed to upload image', 'error')
                 setUploadingImage(false)
                 return
             } finally {

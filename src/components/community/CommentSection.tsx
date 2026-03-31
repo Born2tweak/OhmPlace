@@ -3,7 +3,6 @@
 import React, { useState, useRef } from 'react'
 import { Send, Reply, ChevronDown, ChevronUp, Image as ImageIcon, X } from 'lucide-react'
 import VoteButton from './VoteButton'
-import { uploadCommentImage } from '@/lib/supabase/storage'
 
 interface Comment {
     id: string
@@ -219,7 +218,13 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
         try {
             let imageUrl: string | undefined
             if (commentImage) {
-                imageUrl = await uploadCommentImage(commentImage, postId)
+                const fd = new FormData()
+                fd.append('file', commentImage)
+                fd.append('postId', postId)
+                const uploadRes = await fetch('/api/upload/comment-image', { method: 'POST', body: fd })
+                if (!uploadRes.ok) throw new Error('Failed to upload image')
+                const { url } = await uploadRes.json() as { url: string }
+                imageUrl = url
                 setCommentImage(null)
                 if (commentImagePreview) URL.revokeObjectURL(commentImagePreview)
                 setCommentImagePreview(null)
@@ -240,7 +245,13 @@ export default function CommentSection({ comments, currentUserId, postAuthorId, 
         try {
             let imageUrl: string | undefined
             if (replyImage) {
-                imageUrl = await uploadCommentImage(replyImage, postId)
+                const fd = new FormData()
+                fd.append('file', replyImage)
+                fd.append('postId', postId)
+                const uploadRes = await fetch('/api/upload/comment-image', { method: 'POST', body: fd })
+                if (!uploadRes.ok) throw new Error('Failed to upload image')
+                const { url } = await uploadRes.json() as { url: string }
+                imageUrl = url
                 setReplyImage(null)
                 if (replyImagePreview) URL.revokeObjectURL(replyImagePreview)
                 setReplyImagePreview(null)
