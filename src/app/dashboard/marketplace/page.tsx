@@ -34,7 +34,7 @@ export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string>('')
     const [selectedCondition, setSelectedCondition] = useState<string>('')
-    const [showFilters, setShowFilters] = useState(false)
+    const [showFilters, setShowFilters] = useState(true)
     const [allSchools, setAllSchools] = useState(false)
     const { toast } = useToast()
     const initialLoadDone = useRef(false)
@@ -141,7 +141,7 @@ export default function MarketplacePage() {
 
         const matchesCategory = selectedCategory ? listing.category === selectedCategory : true
         const matchesCondition = selectedCondition ? listing.condition === selectedCondition : true
-        const matchesCampus = allSchools || !campus ? true : listing.campus === campus
+        const matchesCampus = allSchools || !campus ? true : (listing.campus === campus || listing.campus === null)
 
         return matchesSearch && matchesCategory && matchesCondition && matchesCampus
     }).sort((a, b) => {
@@ -216,7 +216,7 @@ export default function MarketplacePage() {
                         )}
                     </div>
 
-                    <div className={`${showFilters ? 'block' : 'hidden'} md:flex flex-col md:flex-row gap-4 items-center`}>
+                    <div className={`${showFilters ? 'flex' : 'hidden'} md:flex flex-col md:flex-row gap-4 items-center`}>
                         {campus && (
                             <button
                                 onClick={() => setAllSchools(prev => !prev)}
