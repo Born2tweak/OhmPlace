@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { clerkClient } from '@clerk/nextjs/server'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase/server'
-import { clerkClient } from '@clerk/nextjs/server'
+import type { Conversation, Profile } from '@/types/database'
+
+type ConversationWithUser = Conversation & {
+    other_user: {
+        id: string
+        email: string
+        full_name?: string
+        avatar_url?: string
+    }
+}
+
+type ClerkUserSummary = {
+    id: string
+    full_name: string | null
+    email: string
+    clerk_avatar: string | null
+}
 
 export async function GET() {
     const authUser = await getAuthenticatedUser()
@@ -18,66 +35,64 @@ export async function GET() {
             .or(`participant_1.eq.${authUser.userId},participant_2.eq.${authUser.userId}`)
             .order('last_message_at', { ascending: false })
 
-        if (error) {
+        if (error || !data) {
             console.error('Error fetching conversations:', error)
             return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 })
         }
 
-        // Collect all OTHER participant IDs (not the current user)
         const otherUserIds = [...new Set(
-            data.map((c: any) =>
-                c.participant_1 === authUser.userId ? c.participant_2 : c.participant_1
+            data.map((conversation) =>
+                conversation.participant_1 === authUser.userId ? conversation.participant_2 : conversation.participant_1
             )
-        )] as string[]
+        )]
 
         if (otherUserIds.length === 0) {
             return NextResponse.json([])
         }
 
-        // Batch fetch all users from Clerk in a single call + profiles in parallel
         const [clerkResponse, profilesResult] = await Promise.all([
-            clerkClient().then(client =>
-                client.users.getUserList({ userId: otherUserIds, limit: 100 })
-            ).catch(err => {
-                console.error('Clerk getUserList error:', err)
-                return { data: [] }
-            }),
-            supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherUserIds),
+            clerkClient()
+                .then((client) => client.users.getUserList({ userId: otherUserIds, limit: 100 }))
+                .catch((err) => {
+                    console.error('Clerk getUserList error:', err)
+                    return { data: [] }
+                }),
+            supabase.from('profiles').select('id, full_name, avatar_url, email').in('id', otherUserIds),
         ])
 
-        const clerkMap = new Map(
-            (clerkResponse.data || []).map((u: any) => [u.id, {
-                id: u.id,
-                full_name: u.fullName || ([u.firstName, u.lastName].filter(Boolean).join(' ')) || u.username || null,
-                email: u.primaryEmailAddress?.emailAddress || '',
-                clerk_avatar: u.imageUrl,
-            }])
+        const clerkUsers = (clerkResponse.data || []).map((user): ClerkUserSummary => ({
+            id: user.id,
+            full_name:
+                user.fullName ||
+                [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+                user.username ||
+                null,
+            email: user.primaryEmailAddress?.emailAddress || '',
+            clerk_avatar: user.imageUrl,
+        }))
+
+        const clerkMap = new Map<string, ClerkUserSummary>(clerkUsers.map((user) => [user.id, user]))
+        const profileMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'email'>>(
+            (profilesResult.data || []).map((profile) => [profile.id, profile])
         )
 
-        const profileMap = new Map(profilesResult.data?.map((p: any) => [p.id, p]))
-
-        // Log any IDs that Clerk doesn't know about (stale/deleted accounts)
-        const missingFromClerk = otherUserIds.filter(id => !clerkMap.has(id))
+        const missingFromClerk = otherUserIds.filter((id) => !clerkMap.has(id))
         if (missingFromClerk.length > 0) {
             console.warn('User IDs in conversations not found in Clerk:', missingFromClerk)
         }
 
-        const enriched = data.map((c: any) => {
-            const otherUserId = c.participant_1 === authUser.userId ? c.participant_2 : c.participant_1
-            const clerk = clerkMap.get(otherUserId) as any
-            const profile = profileMap.get(otherUserId) as any
-
-            // Profile full_name overrides Clerk if explicitly set; profile avatar_url overrides Clerk avatar if set
-            const full_name = profile?.full_name || clerk?.full_name || null
-            const avatar_url = profile?.avatar_url || clerk?.clerk_avatar || undefined
+        const enriched: ConversationWithUser[] = data.map((conversation) => {
+            const otherUserId = conversation.participant_1 === authUser.userId ? conversation.participant_2 : conversation.participant_1
+            const clerk = clerkMap.get(otherUserId)
+            const profile = profileMap.get(otherUserId)
 
             return {
-                ...c,
+                ...conversation,
                 other_user: {
                     id: otherUserId,
                     email: clerk?.email || profile?.email || '',
-                    full_name,
-                    avatar_url,
+                    full_name: profile?.full_name || clerk?.full_name || 'Unknown User',
+                    avatar_url: profile?.avatar_url || clerk?.clerk_avatar || undefined,
                 }
             }
         })
@@ -88,7 +103,6 @@ export async function GET() {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
-
 
 export async function POST(request: NextRequest) {
     const authUser = await getAuthenticatedUser()
@@ -115,8 +129,6 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase()
 
     try {
-        // Check for existing conversation (bidirectional) — use limit(1) not maybeSingle()
-        // because maybeSingle() errors when >1 row exists (e.g. both A→B and B→A rows)
         const { data: existingRows, error: fetchError } = await supabase
             .from('conversations')
             .select('id')
@@ -134,7 +146,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ conversationId: existingRows[0].id })
         }
 
-        // Create new conversation — canonicalize order so (A,B) and (B,A) always produce the same row
         const [p1, p2] = [authUser.userId, participantId].sort()
         const { data: newConvo, error: createError } = await supabase
             .from('conversations')
@@ -147,7 +158,6 @@ export async function POST(request: NextRequest) {
             .single()
 
         if (createError) {
-            // Handle race condition: another request may have just created the same conversation
             if (createError.code === '23505') {
                 const { data: racedConvo } = await supabase
                     .from('conversations')

@@ -2,7 +2,6 @@
 
 import { useUser, useClerk, SignIn, SignUp } from '@clerk/nextjs'
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Sun, Moon } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import { useRouter } from 'next/navigation'
@@ -10,21 +9,17 @@ import { useRouter } from 'next/navigation'
 export default function Home() {
     const { user, isLoaded, isSignedIn } = useUser()
     const { signOut } = useClerk()
-    const [eduError, setEduError] = useState(false)
     const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
     const { theme, setTheme } = useTheme()
     const router = useRouter()
+    const email = user?.primaryEmailAddress?.emailAddress
+    const eduError = Boolean(isSignedIn && email && !/@.+\.edu$/i.test(email))
 
     useEffect(() => {
-        if (isSignedIn && user?.primaryEmailAddress?.emailAddress) {
-            const email = user.primaryEmailAddress.emailAddress
-            if (!/@.+\.edu$/i.test(email)) {
-                setEduError(true)
-            } else {
-                router.replace('/dashboard')
-            }
+        if (isSignedIn && email && !eduError) {
+            router.replace('/dashboard')
         }
-    }, [isSignedIn, user, router])
+    }, [eduError, email, isSignedIn, router])
 
     const getCampus = (email: string | undefined): string => {
         if (!email) return ''

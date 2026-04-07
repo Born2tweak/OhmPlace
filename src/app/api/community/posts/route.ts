@@ -76,8 +76,7 @@ export async function GET(request: NextRequest) {
         avatarMap[p.id] = p.avatar_url
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let result: any[] = posts.map((post) => ({
+    const result: Record<string, unknown>[] = posts.map((post) => ({
         ...post,
         userVote: voteMap[post.id as string] || 0,
         avatar_url: avatarMap[post.user_id as string] || null

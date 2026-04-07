@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase/server'
+import type { Conversation } from '@/types/database'
 
-async function validateParticipant(supabase: any, conversationId: string, userId: string) {
+type ConversationLookup = Pick<Conversation, 'id' | 'participant_1' | 'participant_2'>
+
+async function validateParticipant(
+    supabase: ReturnType<typeof getSupabase>,
+    conversationId: string,
+    userId: string
+): Promise<ConversationLookup | null> {
     const { data, error } = await supabase
         .from('conversations')
         .select('id, participant_1, participant_2')

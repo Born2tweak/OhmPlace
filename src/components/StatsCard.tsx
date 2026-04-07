@@ -18,7 +18,7 @@ function useCountUp(target: number, duration = 1200): number {
 
     useEffect(() => {
         if (target === 0) {
-            setCount(0)
+            startTimeRef.current = null
             return
         }
 

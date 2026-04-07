@@ -1,38 +1,31 @@
 'use client'
-
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag, Plus, X, UserPlus } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import Link from 'next/link'
+import type { Conversation as ConversationRow, Message } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
-type MessageStatus = 'sent' | 'delivered' | 'read'
-
-interface Message {
-    id: string
-    conversation_id: string
-    sender_id: string
-    text: string
-    status: MessageStatus
-    created_at: string
-}
-
-interface Conversation {
-    id: string
-    participant_1: string
-    participant_2: string
-    last_message_text: string | null
-    last_message_at: string
-    created_at: string
+type MessageStatus = Message['status']
+type ConversationWithUser = ConversationRow & {
     other_user?: {
         id: string
         email: string
         full_name?: string
         avatar_url?: string
     }
+}
+type UserSearchResult = {
+    id: string
+    full_name: string
+    avatar_url: string
+}
+type SwipeState = {
+    startX: number | null
+    startY: number | null
 }
 
 function getDisplayName(other_user?: { full_name?: string | null; email?: string; id?: string }) {
@@ -59,8 +52,7 @@ function MessagesContent() {
     const router = useRouter()
     const { toast } = useToast()
 
-    // State
-    const [conversations, setConversations] = useState<Conversation[]>([])
+    const [conversations, setConversations] = useState<ConversationWithUser[]>([])
     const [messages, setMessages] = useState<Message[]>([])
     const [loadingConvos, setLoadingConvos] = useState(true)
     const [loadingMessages, setLoadingMessages] = useState(false)
@@ -68,24 +60,22 @@ function MessagesContent() {
     const [messageInput, setMessageInput] = useState('')
     const [searchQuery, setSearchQuery] = useState('')
     const [mobileShowChat, setMobileShowChat] = useState(false)
-
-    // New conversation modal state
     const [showNewConvo, setShowNewConvo] = useState(false)
     const [userSearchQuery, setUserSearchQuery] = useState('')
-    const [userSearchResults, setUserSearchResults] = useState<{ id: string; full_name: string; avatar_url: string }[]>([])
+    const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([])
     const [searchingUsers, setSearchingUsers] = useState(false)
     const [startingConvo, setStartingConvo] = useState(false)
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
-    const pollRef = useRef<NodeJS.Timeout | null>(null)
+    const swipeStateRef = useRef<Record<string, SwipeState>>({})
 
-    // Fetch conversations via API
-    const fetchConversations = async () => {
+    const fetchConversations = async (): Promise<ConversationWithUser[]> => {
         try {
             const res = await fetch('/api/conversations')
             if (!res.ok) throw new Error('Failed to fetch')
-            const data = await res.json()
+            const data = await res.json() as ConversationWithUser[]
             setConversations(data)
             return data
         } catch (err) {
@@ -94,19 +84,17 @@ function MessagesContent() {
         }
     }
 
-    // Fetch messages via API
     const fetchMessages = async (convoId: string) => {
         try {
             const res = await fetch(`/api/conversations/${convoId}/messages`)
             if (!res.ok) throw new Error('Failed to fetch')
-            const data = await res.json()
+            const data = await res.json() as Message[]
             setMessages(data)
         } catch (err) {
             console.error('Error fetching messages:', err)
         }
     }
 
-    // Initial load
     useEffect(() => {
         if (!isLoaded || !user) return
 
@@ -115,22 +103,18 @@ function MessagesContent() {
             const data = await fetchConversations()
             setLoadingConvos(false)
 
-            // Handle selection
             const paramId = searchParams.get('id')
-            if (paramId && data.find((c: any) => c.id === paramId)) {
+            if (paramId && data.some((conversation) => conversation.id === paramId)) {
                 setSelectedConvoId(paramId)
                 setMobileShowChat(true)
-            } else if (data.length > 0 && !mobileShowChat) {
-                if (window.innerWidth >= 768) {
-                    setSelectedConvoId(data[0].id)
-                }
+            } else if (data.length > 0 && !mobileShowChat && window.innerWidth >= 768) {
+                setSelectedConvoId(data[0].id)
             }
         }
 
-        init()
-    }, [user, isLoaded])
+        void init()
+    }, [user, isLoaded, mobileShowChat, searchParams])
 
-    // Fetch messages when conversation changes + set up polling
     useEffect(() => {
         if (!selectedConvoId) return
 
@@ -140,17 +124,13 @@ function MessagesContent() {
             setLoadingMessages(false)
         }
 
-        loadMessages()
+        void loadMessages()
+        void fetch(`/api/conversations/${selectedConvoId}/messages/read`, { method: 'PATCH' }).catch(() => undefined)
 
-        // Mark messages as read
-        fetch(`/api/conversations/${selectedConvoId}/messages/read`, { method: 'PATCH' }).catch(() => {})
-
-        // Poll for new messages every 3 seconds
         if (pollRef.current) clearInterval(pollRef.current)
         pollRef.current = setInterval(() => {
-            fetchMessages(selectedConvoId)
-            // Also refresh conversations for updated last_message_text
-            fetchConversations()
+            void fetchMessages(selectedConvoId)
+            void fetchConversations()
         }, 3000)
 
         return () => {
@@ -158,11 +138,10 @@ function MessagesContent() {
         }
     }, [selectedConvoId])
 
-    // Mark as read when message count changes
     useEffect(() => {
         if (!selectedConvoId || !user) return
-        fetch(`/api/conversations/${selectedConvoId}/messages/read`, { method: 'PATCH' }).catch(() => {})
-    }, [messages.length])
+        void fetch(`/api/conversations/${selectedConvoId}/messages/read`, { method: 'PATCH' }).catch(() => undefined)
+    }, [messages.length, selectedConvoId, user])
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -172,9 +151,8 @@ function MessagesContent() {
         if (!messageInput.trim() || !selectedConvoId || !user) return
 
         const text = messageInput.trim()
-        setMessageInput('') // Optimistic clear
+        setMessageInput('')
 
-        // Optimistic add
         const optimisticMsg: Message = {
             id: `temp-${Date.now()}`,
             conversation_id: selectedConvoId,
@@ -183,7 +161,7 @@ function MessagesContent() {
             status: 'sent',
             created_at: new Date().toISOString(),
         }
-        setMessages(prev => [...prev, optimisticMsg])
+        setMessages((prev) => [...prev, optimisticMsg])
 
         try {
             const res = await fetch(`/api/conversations/${selectedConvoId}/messages`, {
@@ -196,34 +174,30 @@ function MessagesContent() {
                 throw new Error('Failed to send')
             }
 
-            const sentMessage = await res.json()
-            // Replace the optimistic message with the real one
-            setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? sentMessage : m))
-
-            // Update conversation list
-            setConversations(prev => prev.map(c =>
-                c.id === selectedConvoId
-                    ? { ...c, last_message_text: text, last_message_at: new Date().toISOString() }
-                    : c
+            const sentMessage = await res.json() as Message
+            setMessages((prev) => prev.map((message) => message.id === optimisticMsg.id ? sentMessage : message))
+            setConversations((prev) => prev.map((conversation) =>
+                conversation.id === selectedConvoId
+                    ? { ...conversation, last_message_text: text, last_message_at: new Date().toISOString() }
+                    : conversation
             ))
         } catch (error) {
             console.error('Error sending message:', error)
             toast('Failed to send message', 'error')
-            // Remove optimistic message on error
-            setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id))
-            setMessageInput(text) // Revert
+            setMessages((prev) => prev.filter((message) => message.id !== optimisticMsg.id))
+            setMessageInput(text)
         }
     }
 
-    const filteredConversations = conversations.filter(c => {
+    const filteredConversations = conversations.filter(conversation => {
         // Hide ghost accounts (deleted/unknown users with no resolvable identity)
-        const hasIdentity = c.other_user?.full_name || c.other_user?.email
+        const hasIdentity = conversation.other_user?.full_name || conversation.other_user?.email
         if (!hasIdentity) return false
         // Apply search filter
         if (!searchQuery) return true
-        const name = getDisplayName(c.other_user).toLowerCase()
+        const name = getDisplayName(conversation.other_user).toLowerCase()
         return name.includes(searchQuery.toLowerCase()) ||
-            (c.last_message_text?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+            (conversation.last_message_text?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
     })
 
     const handleUserSearch = (query: string) => {
@@ -233,12 +207,13 @@ function MessagesContent() {
             setUserSearchResults([])
             return
         }
+
         setSearchingUsers(true)
         searchTimeoutRef.current = setTimeout(async () => {
             try {
                 const res = await fetch(`/api/users/search?q=${encodeURIComponent(query.trim())}`)
                 if (res.ok) {
-                    const data = await res.json()
+                    const data = await res.json() as UserSearchResult[]
                     setUserSearchResults(data)
                 }
             } catch (err) {
@@ -257,26 +232,24 @@ function MessagesContent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ participantId }),
             })
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error)
+            const data = await res.json() as { conversationId?: string; error?: string }
+            if (!res.ok || !data.conversationId) throw new Error(data.error || 'Failed to start conversation')
 
             setShowNewConvo(false)
             setUserSearchQuery('')
             setUserSearchResults([])
-
-            // Refresh conversations and select the new one
             setSelectedConvoId(data.conversationId)
             setMobileShowChat(true)
-            // Re-fetch conversations to include the new one
-            window.location.href = `/dashboard/messages?id=${data.conversationId}`
-        } catch (error: any) {
-            toast(error.message || 'Failed to start conversation', 'error')
+            router.replace(`/dashboard/messages?id=${data.conversationId}`)
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to start conversation'
+            toast(message, 'error')
         } finally {
             setStartingConvo(false)
         }
     }
 
-    const selectedConvo = conversations.find((c: any) => c.id === selectedConvoId)
+    const selectedConvo = conversations.find((conversation) => conversation.id === selectedConvoId)
 
     if (!isLoaded || loadingConvos) {
         return (
@@ -289,11 +262,8 @@ function MessagesContent() {
     return (
         <div className="rounded-lg shadow-md overflow-hidden flex h-[calc(100vh-160px)]"
             style={{ background: 'var(--bg-card)' }}>
-
-            {/* Left Sidebar: Conversations */}
             <div className={`w-full md:w-80 md:min-w-[320px] flex flex-col ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}
                 style={{ borderRight: '1px solid var(--border-subtle)' }}>
-                {/* Header */}
                 <div className="p-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Messages</h2>
@@ -306,7 +276,6 @@ function MessagesContent() {
                             <span className="hidden sm:inline">New</span>
                         </button>
                     </div>
-                    {/* Search */}
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
                         <input
@@ -324,7 +293,6 @@ function MessagesContent() {
                     </div>
                 </div>
 
-                {/* List */}
                 <div className="flex-1 overflow-y-auto">
                     {filteredConversations.length === 0 ? (
                         <div className="p-8 text-center">
@@ -344,40 +312,40 @@ function MessagesContent() {
                     ) : (
                         filteredConversations.map((convo) => {
                             const handleSwipeStart = (e: React.TouchEvent<HTMLDivElement>) => {
-                                const el = e.currentTarget;
-                                (el as any)._startX = e.touches[0].clientX;
-                                (el as any)._startY = e.touches[0].clientY;
-                                (el as any)._swiping = false;
+                                swipeStateRef.current[convo.id] = {
+                                    startX: e.touches[0].clientX,
+                                    startY: e.touches[0].clientY
+                                }
                             }
+
                             const handleSwipeMove = (e: React.TouchEvent<HTMLDivElement>) => {
-                                const el = e.currentTarget;
-                                const startX = (el as any)._startX;
-                                const startY = (el as any)._startY;
-                                if (startX == null) return;
-                                const diffX = e.touches[0].clientX - startX;
-                                const diffY = e.touches[0].clientY - startY;
-                                // Only swipe if horizontal
-                                if (Math.abs(diffX) > Math.abs(diffY) && diffX < 0) {
-                                    (el as any)._swiping = true;
-                                    const clamped = Math.max(diffX, -80);
-                                    const inner = el.querySelector('[data-swipe-inner]') as HTMLElement;
-                                    if (inner) {
-                                        inner.style.transform = `translateX(${clamped}px)`;
-                                        inner.style.transition = 'none';
-                                    }
+                                const swipeState = swipeStateRef.current[convo.id]
+                                if (!swipeState || swipeState.startX == null || swipeState.startY == null) return
+
+                                const diffX = e.touches[0].clientX - swipeState.startX
+                                const diffY = e.touches[0].clientY - swipeState.startY
+                                if (Math.abs(diffX) <= Math.abs(diffY) || diffX >= 0) return
+
+                                const clamped = Math.max(diffX, -80)
+                                const inner = e.currentTarget.querySelector('[data-swipe-inner]') as HTMLElement | null
+                                if (inner) {
+                                    inner.style.transform = `translateX(${clamped}px)`
+                                    inner.style.transition = 'none'
                                 }
                             }
+
                             const handleSwipeEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-                                const el = e.currentTarget;
-                                const startX = (el as any)._startX;
-                                if (startX == null) return;
-                                const diffX = e.changedTouches[0].clientX - startX;
-                                const inner = el.querySelector('[data-swipe-inner]') as HTMLElement;
+                                const swipeState = swipeStateRef.current[convo.id]
+                                if (!swipeState || swipeState.startX == null) return
+
+                                const diffX = e.changedTouches[0].clientX - swipeState.startX
+                                const inner = e.currentTarget.querySelector('[data-swipe-inner]') as HTMLElement | null
                                 if (inner) {
-                                    inner.style.transition = 'transform 0.3s ease';
-                                    inner.style.transform = diffX < -50 ? 'translateX(-72px)' : 'translateX(0px)';
+                                    inner.style.transition = 'transform 0.3s ease'
+                                    inner.style.transform = diffX < -50 ? 'translateX(-72px)' : 'translateX(0px)'
                                 }
-                                (el as any)._startX = null;
+
+                                swipeStateRef.current[convo.id] = { startX: null, startY: null }
                             }
 
                             return (
@@ -388,11 +356,9 @@ function MessagesContent() {
                                     onTouchMove={handleSwipeMove}
                                     onTouchEnd={handleSwipeEnd}
                                 >
-                                    {/* Swipe-reveal action */}
                                     <div className="absolute right-0 top-0 bottom-0 w-[72px] flex items-center justify-center bg-red-500 text-white text-xs font-semibold"
                                         onClick={() => {
-                                            // Archive (remove from local state)
-                                            setConversations(prev => prev.filter(c => c.id !== convo.id))
+                                            setConversations((prev) => prev.filter((conversation) => conversation.id !== convo.id))
                                             if (selectedConvoId === convo.id) {
                                                 setSelectedConvoId(null)
                                                 setMobileShowChat(false)
@@ -402,7 +368,6 @@ function MessagesContent() {
                                         Archive
                                     </div>
 
-                                    {/* Conversation item */}
                                     <div
                                         data-swipe-inner
                                         className="relative"
@@ -448,12 +413,10 @@ function MessagesContent() {
                     )}
                 </div>
             </div>
-
-            {/* Right Panel: Chat */}
+            
             <div className={`flex-1 flex flex-col ${mobileShowChat ? 'flex' : 'hidden md:flex'}`}>
                 {selectedConvo ? (
                     <>
-                        {/* Header */}
                         <div className="flex items-center gap-3 px-4 py-3 border-b"
                             style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                             <button
@@ -477,8 +440,6 @@ function MessagesContent() {
                                 </h3>
                             </div>
                         </div>
-
-                        {/* Messages */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: 'var(--bg-lighter)' }}>
                             {loadingMessages ? (
                                 <div className="flex justify-center py-4">
@@ -493,8 +454,7 @@ function MessagesContent() {
                                     <div key={msg.id} className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
                                         <div className="max-w-[70%]">
                                             <div
-                                                className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.sender_id === user?.id ? 'text-white rounded-br-md' : 'rounded-bl-md'
-                                                    }`}
+                                                className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.sender_id === user?.id ? 'text-white rounded-br-md' : 'rounded-bl-md'}`}
                                                 style={{
                                                     background: msg.sender_id === user?.id ? 'var(--brand-primary)' : 'var(--bg-card)',
                                                     color: msg.sender_id === user?.id ? '#ffffff' : 'var(--text-primary)',
@@ -503,8 +463,8 @@ function MessagesContent() {
                                             >
                                                 {msg.text}
                                             </div>
-                                            <div className={`flex items-center gap-1 mt-1 text-[10px] ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'
-                                                }`} style={{ color: 'var(--text-muted)' }}>
+                                            <div className={`flex items-center gap-1 mt-1 text-[10px] ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                                                style={{ color: 'var(--text-muted)' }}>
                                                 {new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                                                 {msg.sender_id === user?.id && <StatusIcon status={msg.status} />}
                                             </div>
@@ -515,14 +475,13 @@ function MessagesContent() {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input */}
                         <div className="p-3 border-t" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
                             <div className="flex items-center gap-2">
                                 <input
                                     type="text"
                                     value={messageInput}
                                     onChange={(e) => setMessageInput(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                    onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
                                     placeholder="Type a message..."
                                     className="flex-1 px-4 py-2.5 rounded-full text-sm focus:outline-none focus:ring-2"
                                     style={{
@@ -532,7 +491,7 @@ function MessagesContent() {
                                     }}
                                 />
                                 <button
-                                    onClick={handleSend}
+                                    onClick={() => { void handleSend() }}
                                     disabled={!messageInput.trim()}
                                     className="p-2.5 rounded-full transition-colors disabled:opacity-50"
                                     style={{
@@ -559,7 +518,6 @@ function MessagesContent() {
                 )}
             </div>
 
-            {/* New Conversation Modal */}
             {showNewConvo && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
                     onClick={() => setShowNewConvo(false)}>
@@ -579,7 +537,7 @@ function MessagesContent() {
                                 type="text"
                                 placeholder="Search users by name..."
                                 value={userSearchQuery}
-                                onChange={e => handleUserSearch(e.target.value)}
+                                onChange={(e) => handleUserSearch(e.target.value)}
                                 autoFocus
                                 className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2"
                                 style={{ background: 'var(--bg-lighter)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
@@ -591,24 +549,24 @@ function MessagesContent() {
                                     <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--brand-primary)' }} />
                                 </div>
                             ) : userSearchResults.length > 0 ? (
-                                userSearchResults.map(u => (
+                                userSearchResults.map((searchUser) => (
                                     <button
-                                        key={u.id}
-                                        onClick={() => startNewConversation(u.id)}
+                                        key={searchUser.id}
+                                        onClick={() => startNewConversation(searchUser.id)}
                                         disabled={startingConvo}
                                         className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left hover:opacity-80 disabled:opacity-50"
                                         style={{ background: 'var(--bg-lighter)' }}
                                     >
-                                        {u.avatar_url ? (
-                                            <img src={u.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                                        {searchUser.avatar_url ? (
+                                            <img src={searchUser.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
                                         ) : (
                                             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
                                                 style={{ background: 'var(--brand-primary)' }}>
-                                                {(u.full_name || '?')[0].toUpperCase()}
+                                                {(searchUser.full_name || '?')[0].toUpperCase()}
                                             </div>
                                         )}
                                         <div>
-                                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{u.full_name}</p>
+                                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{searchUser.full_name}</p>
                                         </div>
                                         {startingConvo && <Loader2 className="w-4 h-4 animate-spin ml-auto" style={{ color: 'var(--brand-primary)' }} />}
                                     </button>

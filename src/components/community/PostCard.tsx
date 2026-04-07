@@ -156,8 +156,9 @@ export default function PostCard({ post, currentUserId, onVote, onDelete, index 
                                         const data = await res.json()
                                         if (!res.ok) throw new Error(data.error)
                                         router.push(`/dashboard/messages?id=${data.conversationId}`)
-                                    } catch (err: any) {
-                                        toast(err.message || 'Failed to start conversation', 'error')
+                                    } catch (err: unknown) {
+                                        const message = err instanceof Error ? err.message : 'Failed to start conversation'
+                                        toast(message, 'error')
                                         setMessagingAuthor(false)
                                     }
                                 }}
