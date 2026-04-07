@@ -111,7 +111,7 @@ function MessagesContent() {
             setLoadingConvos(false)
 
             const paramId = searchParams.get('id')
-            if (paramId && data.some((conversation) => conversation.id === paramId)) {
+            if (paramId) {
                 setSelectedConvoId(paramId)
                 setMobileShowChat(true)
             } else if (data.length > 0 && !mobileShowChat && window.innerWidth >= 768) {

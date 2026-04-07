@@ -144,24 +144,24 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase()
 
     try {
-        const { data: existingRows, error: fetchError } = await supabase
+        const [p1, p2] = [authUser.userId, participantId].sort()
+
+        const { data: existingRow, error: fetchError } = await supabase
             .from('conversations')
             .select('id')
-            .or(
-                `and(participant_1.eq.${authUser.userId},participant_2.eq.${participantId}),and(participant_1.eq.${participantId},participant_2.eq.${authUser.userId})`
-            )
-            .limit(1)
+            .eq('participant_1', p1)
+            .eq('participant_2', p2)
+            .maybeSingle()
 
         if (fetchError) {
             console.error('Error finding conversation:', fetchError)
             return NextResponse.json({ error: 'Failed to find conversation' }, { status: 500 })
         }
 
-        if (existingRows && existingRows.length > 0) {
-            return NextResponse.json({ conversationId: existingRows[0].id })
+        if (existingRow) {
+            return NextResponse.json({ conversationId: existingRow.id })
         }
 
-        const [p1, p2] = [authUser.userId, participantId].sort()
         const { data: newConvo, error: createError } = await supabase
             .from('conversations')
             .insert({
@@ -177,12 +177,11 @@ export async function POST(request: NextRequest) {
                 const { data: racedConvo } = await supabase
                     .from('conversations')
                     .select('id')
-                    .or(
-                        `and(participant_1.eq.${authUser.userId},participant_2.eq.${participantId}),and(participant_1.eq.${participantId},participant_2.eq.${authUser.userId})`
-                    )
-                    .limit(1)
-                if (racedConvo && racedConvo.length > 0) {
-                    return NextResponse.json({ conversationId: racedConvo[0].id })
+                    .eq('participant_1', p1)
+                    .eq('participant_2', p2)
+                    .maybeSingle()
+                if (racedConvo) {
+                    return NextResponse.json({ conversationId: racedConvo.id })
                 }
             }
             console.error('Error creating conversation:', createError)
