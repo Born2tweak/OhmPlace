@@ -31,6 +31,8 @@ export default function SignInPage() {
               identityPreviewEditButton: 'text-indigo-400',
               formResendCodeLink: 'text-indigo-400 hover:text-indigo-300',
               otpCodeFieldInput: 'bg-white/5 border-white/10 text-white',
+              formFieldAction__password: 'text-indigo-400 hover:text-indigo-300',
+              formFieldInputShowPasswordButton: 'text-gray-400 hover:text-gray-300',
             },
             layout: {
               socialButtonsPlacement: 'bottom',
