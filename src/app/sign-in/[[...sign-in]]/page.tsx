@@ -1,4 +1,5 @@
 import { SignIn } from '@clerk/nextjs'
+import Link from 'next/link'
 
 export default function SignInPage() {
   return (
@@ -10,7 +11,7 @@ export default function SignInPage() {
         <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col items-center">
         <SignIn
           forceRedirectUrl="/dashboard"
           appearance={{
@@ -40,6 +41,15 @@ export default function SignInPage() {
             },
           }}
         />
+        {/* Custom forgot password link */}
+        <div className="mt-3 text-center">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            Forgot your password?
+          </Link>
+        </div>
       </div>
     </div>
   )
