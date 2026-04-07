@@ -9,6 +9,9 @@ import { useClerk } from '@clerk/nextjs'
 import { useTheme } from '@/components/ThemeProvider'
 import { ToastProvider } from '@/components/Toast'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import CampusGate from '@/components/CampusGate'
+import { CampusContext } from '@/components/CampusContext'
+import { AvatarContext } from '@/components/AvatarContext'
 
 export default function DashboardLayout({
     children
@@ -21,6 +24,8 @@ export default function DashboardLayout({
     const { theme, setTheme } = useTheme()
     const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
     const [tappedNav, setTappedNav] = useState<string | null>(null)
+    const [campus, setCampus] = useState<string | null>(null)
+    const [showCampusGate, setShowCampusGate] = useState(false)
 
 
     // Sync profile to Supabase via server-side API on load (client Supabase fails RLS without JWT)
@@ -31,10 +36,16 @@ export default function DashboardLayout({
             try {
                 const res = await fetch('/api/sync-profile', { method: 'POST' })
                 if (res.ok) {
-                    const data = await res.json()
+                    const data = await res.json() as { avatar_url?: string; campus?: string | null }
                     setProfileAvatar(data.avatar_url || user.imageUrl)
+                    if (data.campus) {
+                        setCampus(data.campus)
+                    } else {
+                        setShowCampusGate(true)
+                    }
                 } else {
                     setProfileAvatar(user.imageUrl)
+                    setShowCampusGate(true)
                 }
             } catch {
                 setProfileAvatar(user.imageUrl)
@@ -62,7 +73,12 @@ export default function DashboardLayout({
     ]
 
     return (
+        <AvatarContext.Provider value={{ profileAvatar, setProfileAvatar }}>
+        <CampusContext.Provider value={campus}>
         <div className="min-h-screen" style={{ background: 'var(--bg-gradient)' }}>
+            {showCampusGate && (
+                <CampusGate onCampusSet={(c) => { setCampus(c); setShowCampusGate(false) }} />
+            )}
             {/* Header */}
             <header className="glass sticky top-0 z-50" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -196,5 +212,7 @@ export default function DashboardLayout({
                 </div>
             </nav>
         </div>
+        </CampusContext.Provider>
+        </AvatarContext.Provider>
     )
 }

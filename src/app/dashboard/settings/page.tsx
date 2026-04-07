@@ -8,6 +8,7 @@ import {
     AlertCircle, Camera, Loader2, Lock, Trash2
 } from 'lucide-react'
 import AvatarCropModal from '@/components/settings/AvatarCropModal'
+import { useAvatar } from '@/components/AvatarContext'
 import { useToast } from '@/components/Toast'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -28,6 +29,7 @@ const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'PhD', '
 export default function SettingsPage() {
     const { user } = useUser()
     const { signOut, openUserProfile } = useClerk()
+    const { setProfileAvatar } = useAvatar()
 
     const [activeSection, setActiveSection] = useState<Section>('profile')
     const [profile, setProfile] = useState<Profile>({
@@ -142,6 +144,7 @@ export default function SettingsPage() {
             if (res.ok) {
                 const data = await res.json()
                 setProfile(p => ({ ...p, avatar_url: data.avatar_url }))
+                setProfileAvatar(data.avatar_url as string)
                 toast('Photo updated!', 'success')
             } else {
                 const errData = await res.json().catch(() => ({ error: 'Unknown error' }))
