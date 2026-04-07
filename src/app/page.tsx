@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function Home() {
     const { user, isLoaded, isSignedIn } = useUser()
@@ -228,6 +229,17 @@ export default function Home() {
                                                 <>Don&apos;t have an account? <span className="font-medium hover:underline" style={{ color: 'var(--brand-primary)' }}>Sign up</span></>
                                             )}
                                         </button>
+                                        {mode === 'sign-in' && (
+                                            <div className="mt-3">
+                                                <Link
+                                                    href="/forgot-password"
+                                                    className="text-sm transition-colors hover:underline"
+                                                    style={{ color: 'var(--text-muted)' }}
+                                                >
+                                                    Forgot your password?
+                                                </Link>
+                                            </div>
+                                        )}
                                     </div>
                                     <p className="mt-4 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
                                         Only .edu emails accepted
