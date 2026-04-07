@@ -74,19 +74,27 @@ export async function POST(
         return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
     }
 
-    let body: { text?: string }
+    let body: { text?: string; image_url?: string }
     try {
         body = await request.json()
     } catch {
         return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
 
-    const { text } = body
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
-        return NextResponse.json({ error: 'Message text is required' }, { status: 400 })
+    const { text, image_url } = body
+
+    const trimmedText = typeof text === 'string' ? text.trim() : ''
+    const hasText = trimmedText.length > 0
+    const hasImage = typeof image_url === 'string' && image_url.startsWith('https://')
+
+    if (!hasText && !hasImage) {
+        return NextResponse.json(
+            { error: 'Message must contain text or an image' },
+            { status: 400 }
+        )
     }
 
-    if (text.length > 2000) {
+    if (hasText && trimmedText.length > 2000) {
         return NextResponse.json({ error: 'Message too long (max 2000 characters)' }, { status: 400 })
     }
 
@@ -96,8 +104,9 @@ export async function POST(
             .insert({
                 conversation_id: conversationId,
                 sender_id: authUser.userId,
-                text: text.trim(),
+                text: trimmedText,
                 status: 'sent',
+                image_url: hasImage ? image_url : null,
             })
             .select('*')
             .single()
@@ -107,11 +116,12 @@ export async function POST(
             return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
         }
 
-        // Update conversation's last message
+        const lastMessageText = hasText ? trimmedText : '📷 Image'
+
         await supabase
             .from('conversations')
             .update({
-                last_message_text: text.trim(),
+                last_message_text: lastMessageText,
                 last_message_at: new Date().toISOString(),
             })
             .eq('id', conversationId)

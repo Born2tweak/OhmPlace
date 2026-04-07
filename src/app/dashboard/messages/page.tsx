@@ -2,10 +2,11 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag, Plus, X, UserPlus } from 'lucide-react'
+import { Search, Send, ArrowLeft, Check, CheckCheck, Loader2, MessageSquare, ShoppingBag, Plus, X, UserPlus, Image as ImageIcon } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 import Link from 'next/link'
 import type { Conversation as ConversationRow, Message } from '@/types/database'
+import { uploadMessageImage } from '@/lib/supabase/storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,6 +66,12 @@ function MessagesContent() {
     const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([])
     const [searchingUsers, setSearchingUsers] = useState(false)
     const [startingConvo, setStartingConvo] = useState(false)
+
+    // Image attachment state
+    const [pendingImage, setPendingImage] = useState<File | null>(null)
+    const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null)
+    const [uploadingImage, setUploadingImage] = useState(false)
+    const imageInputRef = useRef<HTMLInputElement>(null)
 
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -147,11 +154,51 @@ function MessagesContent() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages, loadingMessages])
 
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setPendingImage(file)
+        setPendingImageUrl(URL.createObjectURL(file))
+        e.target.value = ''
+    }
+
+    const clearPendingImage = () => {
+        if (pendingImageUrl) URL.revokeObjectURL(pendingImageUrl)
+        setPendingImage(null)
+        setPendingImageUrl(null)
+    }
+
     const handleSend = async () => {
-        if (!messageInput.trim() || !selectedConvoId || !user) return
+        if ((!messageInput.trim() && !pendingImage) || !selectedConvoId || !user) return
 
         const text = messageInput.trim()
         setMessageInput('')
+
+        let uploadedImageUrl: string | null = null
+
+        if (pendingImage) {
+            setUploadingImage(true)
+            try {
+                const fd = new FormData()
+                fd.append('file', pendingImage)
+                fd.append('conversationId', selectedConvoId)
+                const uploadRes = await fetch('/api/upload/message-image', { method: 'POST', body: fd })
+                if (!uploadRes.ok) {
+                    const err = await uploadRes.json() as { error?: string }
+                    throw new Error(err.error || 'Upload failed')
+                }
+                const { url } = await uploadRes.json() as { url: string }
+                uploadedImageUrl = url
+            } catch (err) {
+                console.error('Image upload failed:', err)
+                toast(err instanceof Error ? err.message : 'Failed to upload image', 'error')
+                setUploadingImage(false)
+                return
+            } finally {
+                setUploadingImage(false)
+            }
+            clearPendingImage()
+        }
 
         const optimisticMsg: Message = {
             id: `temp-${Date.now()}`,
@@ -160,6 +207,7 @@ function MessagesContent() {
             text,
             status: 'sent',
             created_at: new Date().toISOString(),
+            image_url: uploadedImageUrl,
         }
         setMessages((prev) => [...prev, optimisticMsg])
 
@@ -167,20 +215,24 @@ function MessagesContent() {
             const res = await fetch(`/api/conversations/${selectedConvoId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({ text, image_url: uploadedImageUrl }),
             })
 
             if (!res.ok) {
-                throw new Error('Failed to send')
+                const data = await res.json() as { error?: string }
+                toast(data.error || 'Failed to send message', 'error')
+                setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id))
+                setMessageInput(text)
+            } else {
+                const sentMessage = await res.json() as Message
+                setMessages((prev) => prev.map((m) => m.id === optimisticMsg.id ? sentMessage : m))
+                const lastText = text || '📷 Image'
+                setConversations((prev) => prev.map((conversation) =>
+                    conversation.id === selectedConvoId
+                        ? { ...conversation, last_message_text: lastText, last_message_at: new Date().toISOString() }
+                        : conversation
+                ))
             }
-
-            const sentMessage = await res.json() as Message
-            setMessages((prev) => prev.map((message) => message.id === optimisticMsg.id ? sentMessage : message))
-            setConversations((prev) => prev.map((conversation) =>
-                conversation.id === selectedConvoId
-                    ? { ...conversation, last_message_text: text, last_message_at: new Date().toISOString() }
-                    : conversation
-            ))
         } catch (error) {
             console.error('Error sending message:', error)
             toast('Failed to send message', 'error')
@@ -461,7 +513,19 @@ function MessagesContent() {
                                                     border: msg.sender_id === user?.id ? 'none' : '1px solid var(--border-subtle)'
                                                 }}
                                             >
-                                                {msg.text}
+                                                {msg.text && (
+                                                    <p className="text-sm">{msg.text}</p>
+                                                )}
+                                                {msg.image_url && (
+                                                    <a href={msg.image_url} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                                                        <img
+                                                            src={msg.image_url}
+                                                            alt="Image"
+                                                            className="max-h-64 w-auto rounded-xl object-cover"
+                                                            style={{ maxWidth: '100%' }}
+                                                        />
+                                                    </a>
+                                                )}
                                             </div>
                                             <div className={`flex items-center gap-1 mt-1 text-[10px] ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
                                                 style={{ color: 'var(--text-muted)' }}>
@@ -476,30 +540,79 @@ function MessagesContent() {
                         </div>
 
                         <div className="p-3 border-t" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-                            <div className="flex items-center gap-2">
+                            {/* Image preview above input */}
+                            {pendingImageUrl && (
+                                <div className="relative inline-block mb-2 ml-2">
+                                    <img
+                                        src={pendingImageUrl}
+                                        alt="Attachment preview"
+                                        className="h-20 w-auto rounded-xl object-cover border"
+                                        style={{ border: '1px solid var(--border-subtle)' }}
+                                    />
+                                    <button
+                                        onClick={clearPendingImage}
+                                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-gray-800 text-white flex items-center justify-center"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="flex gap-2 items-center">
+                                {/* Hidden file input */}
+                                <input
+                                    ref={imageInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleImageSelect}
+                                />
+
+                                {/* Image attach button */}
+                                <button
+                                    type="button"
+                                    onClick={() => imageInputRef.current?.click()}
+                                    disabled={uploadingImage}
+                                    className="p-2 rounded-full transition-colors hover:opacity-80 flex-shrink-0"
+                                    style={{ color: 'var(--text-muted)', background: 'var(--bg-lighter)' }}
+                                    title="Attach image"
+                                >
+                                    <ImageIcon className="w-5 h-5" />
+                                </button>
+
+                                {/* Text input */}
                                 <input
                                     type="text"
                                     value={messageInput}
                                     onChange={(e) => setMessageInput(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
-                                    placeholder="Type a message..."
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault()
+                                            void handleSend()
+                                        }
+                                    }}
+                                    placeholder={pendingImage ? 'Add a caption...' : 'Type a message...'}
                                     className="flex-1 px-4 py-2.5 rounded-full text-sm focus:outline-none focus:ring-2"
                                     style={{
-                                        background: 'var(--bg-lighter)',
                                         border: '1px solid var(--border-subtle)',
-                                        color: 'var(--text-primary)'
+                                        background: 'var(--bg-lighter)',
+                                        color: 'var(--text-primary)',
                                     }}
+                                    disabled={uploadingImage}
                                 />
+
+                                {/* Send button */}
                                 <button
-                                    onClick={() => { void handleSend() }}
-                                    disabled={!messageInput.trim()}
-                                    className="p-2.5 rounded-full transition-colors disabled:opacity-50"
-                                    style={{
-                                        background: messageInput.trim() ? 'var(--brand-primary)' : 'var(--bg-lighter)',
-                                        color: messageInput.trim() ? '#ffffff' : 'var(--text-secondary)'
-                                    }}
+                                    onClick={() => void handleSend()}
+                                    disabled={(!messageInput.trim() && !pendingImage) || uploadingImage}
+                                    className="p-2.5 rounded-full text-white transition-colors disabled:opacity-40 flex-shrink-0"
+                                    style={{ background: 'var(--brand-primary)' }}
                                 >
-                                    <Send className="w-4 h-4" />
+                                    {uploadingImage ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <Send className="w-5 h-5" />
+                                    )}
                                 </button>
                             </div>
                         </div>

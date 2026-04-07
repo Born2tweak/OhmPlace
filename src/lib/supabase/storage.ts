@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/client'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+const ALLOWED_TYPES_WITH_GIF = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
 
 export async function uploadListingImage(
     file: File,
@@ -127,6 +128,76 @@ export async function uploadPostImage(
     const {
         data: { publicUrl }
     } = supabase.storage.from('post-images').getPublicUrl(data.path)
+
+    return publicUrl
+}
+
+export async function uploadMessageImage(
+    file: File,
+    conversationId: string
+): Promise<string> {
+    if (file.size > MAX_FILE_SIZE) {
+        throw new Error('File size must be less than 5MB')
+    }
+
+    if (!ALLOWED_TYPES_WITH_GIF.includes(file.type)) {
+        throw new Error('Only JPEG, PNG, WebP, and GIF images are allowed')
+    }
+
+    const supabase = createClient()
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${conversationId}/${crypto.randomUUID()}.${fileExt}`
+
+    const { data, error } = await supabase.storage
+        .from('message-images')
+        .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+        })
+
+    if (error) {
+        console.error('Upload error:', error)
+        throw new Error('Failed to upload image')
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from('message-images')
+        .getPublicUrl(data.path)
+
+    return publicUrl
+}
+
+export async function uploadCommentImage(
+    file: File,
+    postId: string
+): Promise<string> {
+    if (file.size > MAX_FILE_SIZE) {
+        throw new Error('File size must be less than 5MB')
+    }
+
+    if (!ALLOWED_TYPES_WITH_GIF.includes(file.type)) {
+        throw new Error('Only JPEG, PNG, WebP, and GIF images are allowed')
+    }
+
+    const supabase = createClient()
+    const fileExt = file.name.split('.').pop()
+    const fileName = `comments/${postId}/${crypto.randomUUID()}.${fileExt}`
+
+    const { data, error } = await supabase.storage
+        .from('message-images')
+        .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+        })
+
+    if (error) {
+        console.error('Upload error:', error)
+        throw new Error('Failed to upload image')
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from('message-images')
+        .getPublicUrl(data.path)
 
     return publicUrl
 }

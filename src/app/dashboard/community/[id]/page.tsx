@@ -135,11 +135,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         })
     }
 
-    const handleAddComment = async (body: string, parentId?: string) => {
+    const handleAddComment = async (body: string, parentId?: string, imageUrl?: string) => {
         const res = await fetch(`/api/community/posts/${id}/comments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ body, parent_id: parentId || null })
+            body: JSON.stringify({ body, parent_id: parentId || null, image_url: imageUrl || null })
         })
 
         if (res.ok && post) {
@@ -327,6 +327,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                     comments={post.comments}
                     currentUserId={user?.id || ''}
                     postAuthorId={post.user_id}
+                    postId={id}
                     onAddComment={handleAddComment}
                     onVoteComment={handleCommentVote}
                 />

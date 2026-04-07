@@ -132,6 +132,7 @@ export type Database = {
                     text: string
                     status: 'sent' | 'delivered' | 'read'
                     created_at: string
+                    image_url: string | null
                 }
                 Insert: {
                     id?: string
@@ -140,9 +141,11 @@ export type Database = {
                     text: string
                     status?: 'sent' | 'delivered' | 'read'
                     created_at?: string
+                    image_url?: string | null
                 }
                 Update: {
                     status?: 'sent' | 'delivered' | 'read'
+                    image_url?: string | null
                 }
             }
             posts: {
@@ -214,6 +217,7 @@ export type Database = {
                     upvotes: number
                     downvotes: number
                     created_at: string
+                    image_url: string | null
                 }
                 Insert: {
                     id?: string
@@ -225,11 +229,13 @@ export type Database = {
                     upvotes?: number
                     downvotes?: number
                     created_at?: string
+                    image_url?: string | null
                 }
                 Update: {
                     body?: string
                     upvotes?: number
                     downvotes?: number
+                    image_url?: string | null
                 }
             }
             comment_votes: {

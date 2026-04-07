@@ -111,7 +111,7 @@ export default function MarketplacePage() {
                     setListings(prev => prev.filter(l => l.id !== updated.id))
                 } else {
                     setListings(prev => prev.map(l =>
-                        l.id === updated.id ? { ...l, ...updated } : l
+                        l.id === updated.id ? { ...l, ...updated, images: l.images } : l
                     ))
                 }
             })
