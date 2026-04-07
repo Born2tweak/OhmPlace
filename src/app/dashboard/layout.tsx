@@ -12,6 +12,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import CampusGate from '@/components/CampusGate'
 import { CampusContext } from '@/components/CampusContext'
 import { AvatarContext } from '@/components/AvatarContext'
+import { detectCampusFromEmail } from '@/lib/campus'
 
 export default function DashboardLayout({
     children
@@ -77,7 +78,10 @@ export default function DashboardLayout({
         <CampusContext.Provider value={campus}>
         <div className="min-h-screen" style={{ background: 'var(--bg-gradient)' }}>
             {showCampusGate && (
-                <CampusGate onCampusSet={(c) => { setCampus(c); setShowCampusGate(false) }} />
+                <CampusGate
+                    onCampusSet={(c) => { setCampus(c); setShowCampusGate(false) }}
+                    detectedCampus={detectCampusFromEmail(user?.primaryEmailAddress?.emailAddress ?? '')}
+                />
             )}
             {/* Header */}
             <header className="glass sticky top-0 z-50" style={{ borderBottom: '1px solid var(--border-subtle)' }}>

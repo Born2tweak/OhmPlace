@@ -13,6 +13,7 @@ export type Database = {
                     status: 'available' | 'sold' | 'reserved'
                     promoted: boolean
                     promoted_until: string | null
+                    campus: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -27,6 +28,7 @@ export type Database = {
                     status?: 'available' | 'sold' | 'reserved'
                     promoted?: boolean
                     promoted_until?: string | null
+                    campus?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -41,6 +43,7 @@ export type Database = {
                     status?: 'available' | 'sold' | 'reserved'
                     promoted?: boolean
                     promoted_until?: string | null
+                    campus?: string | null
                     created_at?: string
                     updated_at?: string
                 }

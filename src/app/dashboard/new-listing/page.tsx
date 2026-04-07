@@ -8,10 +8,12 @@ import { uploadListingImage } from '@/lib/supabase/storage'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, CONDITIONS } from '@/types/database'
 import type { ListingInsert, ListingImageInsert } from '@/types/database'
+import { useCampus } from '@/components/CampusContext'
 
 export default function NewListingPage() {
     const router = useRouter()
     const { user } = useUser()
+    const campus = useCampus()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
@@ -54,7 +56,8 @@ export default function NewListingPage() {
                 description: formData.description.trim() || null,
                 category: formData.category,
                 condition: formData.condition,
-                price: priceInCents
+                price: priceInCents,
+                campus: campus ?? null,
             }
 
             const { data: listing, error: listingError } = await supabase

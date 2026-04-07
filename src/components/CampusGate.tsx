@@ -6,10 +6,11 @@ import { SUPPORTED_CAMPUSES } from '@/lib/campus'
 
 interface CampusGateProps {
     onCampusSet: (campus: string) => void
+    detectedCampus?: string | null
 }
 
-export default function CampusGate({ onCampusSet }: CampusGateProps) {
-    const [selected, setSelected] = useState('')
+export default function CampusGate({ onCampusSet, detectedCampus }: CampusGateProps) {
+    const [selected, setSelected] = useState(detectedCampus ?? '')
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
 
@@ -47,10 +48,13 @@ export default function CampusGate({ onCampusSet }: CampusGateProps) {
                 </div>
 
                 <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-                    What school are you at?
+                    {detectedCampus ? 'Confirm your school' : 'What school are you at?'}
                 </h2>
                 <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-                    OhmPlace connects engineers at your campus. You&apos;ll only see listings and posts from your school.
+                    {detectedCampus
+                        ? `We detected ${detectedCampus} from your email. Is that right?`
+                        : "OhmPlace connects engineers at your campus. You'll only see listings and posts from your school."
+                    }
                 </p>
 
                 <select

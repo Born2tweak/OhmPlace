@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase/server'
 import { clerkClient } from '@clerk/nextjs/server'
+import { detectCampusFromEmail } from '@/lib/campus'
 
 function isPlaceholderName(name: string | null | undefined): boolean {
     if (!name) return true
@@ -23,7 +24,6 @@ export async function POST() {
     const supabase = getSupabase()
 
     try {
-        // Get the full Clerk user for name/avatar
         const client = await clerkClient()
         const clerkUser = await client.users.getUser(authUser.userId)
 
@@ -36,15 +36,18 @@ export async function POST() {
             ? authUser.email.split('@')[0]
             : rawName!
 
-        // Check if they have a custom avatar already uploaded
+        // Check existing profile
         const { data: existing } = await supabase
             .from('profiles')
-            .select('avatar_url')
+            .select('avatar_url, campus')
             .eq('id', authUser.userId)
             .maybeSingle()
 
         // Only use Clerk avatar if no custom one has been uploaded
         const avatar_url = existing?.avatar_url || clerkUser.imageUrl
+
+        // Auto-detect campus from email if not already set
+        const campus = existing?.campus ?? detectCampusFromEmail(authUser.email)
 
         const { data, error } = await supabase
             .from('profiles')
@@ -53,9 +56,10 @@ export async function POST() {
                 email: authUser.email,
                 full_name,
                 avatar_url,
+                campus,
                 updated_at: new Date().toISOString(),
             }, { onConflict: 'id' })
-            .select('id, full_name, avatar_url')
+            .select('id, full_name, avatar_url, campus')
             .single()
 
         if (error) {

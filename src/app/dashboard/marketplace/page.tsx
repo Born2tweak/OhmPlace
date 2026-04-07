@@ -3,11 +3,12 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ListingCard from '@/components/ListingCard'
-import { Search, Filter, X } from 'lucide-react'
+import { Search, Filter, X, GraduationCap } from 'lucide-react'
 import PullToRefresh from '@/components/PullToRefresh'
 import { useToast } from '@/components/Toast'
 import type { Listing, ListingImage } from '@/types/database'
 import { CATEGORIES, CONDITIONS } from '@/types/database'
+import { useCampus } from '@/components/CampusContext'
 
 interface ListingWithImages extends Listing {
     images: ListingImage[]
@@ -27,12 +28,14 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function MarketplacePage() {
+    const campus = useCampus()
     const [listings, setListings] = useState<ListingWithImages[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string>('')
     const [selectedCondition, setSelectedCondition] = useState<string>('')
     const [showFilters, setShowFilters] = useState(false)
+    const [allSchools, setAllSchools] = useState(false)
     const { toast } = useToast()
     const initialLoadDone = useRef(false)
 
@@ -138,8 +141,9 @@ export default function MarketplacePage() {
 
         const matchesCategory = selectedCategory ? listing.category === selectedCategory : true
         const matchesCondition = selectedCondition ? listing.condition === selectedCondition : true
+        const matchesCampus = allSchools || !campus ? true : listing.campus === campus
 
-        return matchesSearch && matchesCategory && matchesCondition
+        return matchesSearch && matchesCategory && matchesCondition && matchesCampus
     }).sort((a, b) => {
         const aPromoted = a.promoted && a.promoted_until && new Date(a.promoted_until) > new Date()
         const bPromoted = b.promoted && b.promoted_until && new Date(b.promoted_until) > new Date()
@@ -160,7 +164,9 @@ export default function MarketplacePage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Marketplace</h1>
-                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Browse all items posted by students</p>
+                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                            {allSchools || !campus ? 'Browsing all schools' : `Browsing ${campus}`}
+                        </p>
                     </div>
 
                     {/* Search Bar */}
@@ -211,6 +217,20 @@ export default function MarketplacePage() {
                     </div>
 
                     <div className={`${showFilters ? 'block' : 'hidden'} md:flex flex-col md:flex-row gap-4 items-center`}>
+                        {campus && (
+                            <button
+                                onClick={() => setAllSchools(prev => !prev)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all shrink-0"
+                                style={{
+                                    background: allSchools ? 'var(--bg-lighter)' : 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
+                                    color: allSchools ? 'var(--text-secondary)' : '#fff',
+                                    border: allSchools ? '1px solid var(--border-subtle)' : 'none',
+                                }}
+                            >
+                                <GraduationCap className="w-3.5 h-3.5" />
+                                {allSchools ? 'All Schools' : 'My School'}
+                            </button>
+                        )}
                         <div className="flex items-center gap-2 w-full md:w-auto">
                             <Filter className="w-4 h-4 hidden md:block" style={{ color: 'var(--text-muted)' }} />
                             <span className="text-sm font-medium hidden md:block" style={{ color: 'var(--text-secondary)' }}>Filters:</span>
