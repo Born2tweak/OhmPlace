@@ -334,7 +334,8 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                             </button>
                             <button
                                 onClick={() => {
-                                    navigator.clipboard.writeText(window.location.href)
+                                    const publicUrl = `${window.location.origin}/listing/${listing.id}`
+                                    navigator.clipboard.writeText(publicUrl)
                                     toast('Link copied to clipboard!', 'success')
                                 }}
                                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all border border-transparent hover:border-current"
