@@ -36,13 +36,8 @@ export default function Home() {
                 style={{ borderBottom: '1px solid var(--border-subtle)', background: theme === 'dark' ? 'rgba(30, 42, 58, 0.85)' : 'rgba(255, 255, 255, 0.85)' }}>
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
-                                style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}>
-                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
+                        <div className="flex items-center gap-2">
+                            <img src="/android-chrome-192x192.png" alt="OhmPlace" className="w-9 h-9 rounded-xl" />
                             <span className="font-bold text-xl" style={{ color: 'var(--text-primary)' }}>OhmPlace</span>
                         </div>
 
@@ -417,12 +412,7 @@ export default function Home() {
             <footer className="py-8" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
                 <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                            style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}>
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </div>
+                        <img src="/android-chrome-192x192.png" alt="OhmPlace" className="w-7 h-7 rounded-lg" />
                         <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>OhmPlace</span>
                     </div>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>© 2026 OhmPlace · Built for students</p>

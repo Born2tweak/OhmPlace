@@ -87,8 +87,9 @@ export default function DashboardLayout({
             <header className="glass sticky top-0 z-50" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <Link href="/" className="text-2xl font-bold gradient-text tracking-tight">
-                            OhmPlace
+                        <Link href="/" className="flex items-center gap-2">
+                            <img src="/android-chrome-192x192.png" alt="OhmPlace" className="w-8 h-8 rounded-lg" />
+                            <span className="text-2xl font-bold gradient-text tracking-tight">OhmPlace</span>
                         </Link>
                         <div className="flex items-center gap-3">
                             <button
