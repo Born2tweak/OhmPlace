@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ListingCard from '@/components/ListingCard'
-import { Search, Filter, X, GraduationCap } from 'lucide-react'
+import { Search, Filter, X, GraduationCap, ChevronDown } from 'lucide-react'
 import PullToRefresh from '@/components/PullToRefresh'
 import { useToast } from '@/components/Toast'
 import type { Listing, ListingImage } from '@/types/database'
@@ -13,8 +13,6 @@ import { useCampus } from '@/components/CampusContext'
 interface ListingWithImages extends Listing {
     images: ListingImage[]
 }
-
-
 
 function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = useState(value)
@@ -35,13 +33,22 @@ export default function MarketplacePage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('')
     const [selectedCondition, setSelectedCondition] = useState<string>('')
     const [showFilters, setShowFilters] = useState(true)
-    const [allSchools, setAllSchools] = useState(false)
+    // campusFilter: 'mine' | 'all' | specific school name
+    const [campusFilter, setCampusFilter] = useState<string>('mine')
     const { toast } = useToast()
     const initialLoadDone = useRef(false)
 
     const debouncedSearch = useDebounce(searchTerm, 300)
 
     const supabase = createClient()
+
+    // Derive available schools from fetched listings (only named campuses)
+    const availableCampuses = useMemo(() => {
+        const names = listings
+            .map(l => l.campus)
+            .filter((c): c is string => !!c)
+        return Array.from(new Set(names)).sort()
+    }, [listings])
 
     const fetchListingImages = useCallback(async (listingId: string) => {
         const { data: images } = await supabase
@@ -110,7 +117,6 @@ export default function MarketplacePage() {
             }, (payload) => {
                 const updated = payload.new as Listing
                 if (updated.status !== 'available') {
-                    // Remove sold/reserved listings
                     setListings(prev => prev.filter(l => l.id !== updated.id))
                 } else {
                     setListings(prev => prev.map(l =>
@@ -141,7 +147,15 @@ export default function MarketplacePage() {
 
         const matchesCategory = selectedCategory ? listing.category === selectedCategory : true
         const matchesCondition = selectedCondition ? listing.condition === selectedCondition : true
-        const matchesCampus = allSchools || !campus ? true : (listing.campus === campus || listing.campus === null)
+
+        let matchesCampus: boolean
+        if (campusFilter === 'all' || !campus) {
+            matchesCampus = true
+        } else if (campusFilter === 'mine') {
+            matchesCampus = listing.campus === campus || listing.campus === null
+        } else {
+            matchesCampus = listing.campus === campusFilter
+        }
 
         return matchesSearch && matchesCategory && matchesCondition && matchesCampus
     }).sort((a, b) => {
@@ -158,15 +172,19 @@ export default function MarketplacePage() {
         setSelectedCondition('')
     }
 
+    const campusLabel = campusFilter === 'mine' && campus
+        ? `Browsing ${campus}`
+        : campusFilter === 'all' || !campus
+        ? 'Browsing all schools'
+        : `Browsing ${campusFilter}`
+
     return (
         <PullToRefresh onRefresh={async () => { await fetchListings() }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Marketplace</h1>
-                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                            {allSchools || !campus ? 'Browsing all schools' : `Browsing ${campus}`}
-                        </p>
+                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{campusLabel}</p>
                     </div>
 
                     {/* Search Bar */}
@@ -217,20 +235,43 @@ export default function MarketplacePage() {
                     </div>
 
                     <div className={`${showFilters ? 'flex' : 'hidden'} md:flex flex-col md:flex-row gap-4 items-center`}>
+                        {/* My School button */}
                         {campus && (
                             <button
-                                onClick={() => setAllSchools(prev => !prev)}
+                                onClick={() => setCampusFilter('mine')}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all shrink-0"
                                 style={{
-                                    background: allSchools ? 'var(--bg-lighter)' : 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))',
-                                    color: allSchools ? 'var(--text-secondary)' : '#fff',
-                                    border: allSchools ? '1px solid var(--border-subtle)' : 'none',
+                                    background: campusFilter === 'mine' ? 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))' : 'var(--bg-lighter)',
+                                    color: campusFilter === 'mine' ? '#fff' : 'var(--text-secondary)',
+                                    border: campusFilter === 'mine' ? 'none' : '1px solid var(--border-subtle)',
                                 }}
                             >
                                 <GraduationCap className="w-3.5 h-3.5" />
-                                {allSchools ? 'All Schools' : 'My School'}
+                                My School
                             </button>
                         )}
+
+                        {/* School picker dropdown */}
+                        <div className="relative shrink-0">
+                            <select
+                                value={campusFilter === 'mine' ? '' : campusFilter}
+                                onChange={(e) => setCampusFilter(e.target.value || 'mine')}
+                                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 transition-colors cursor-pointer"
+                                style={{
+                                    background: campusFilter !== 'mine' ? 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))' : 'var(--bg-lighter)',
+                                    color: campusFilter !== 'mine' ? '#fff' : 'var(--text-secondary)',
+                                    border: campusFilter !== 'mine' ? 'none' : '1px solid var(--border-subtle)',
+                                }}
+                            >
+                                <option value="">All Schools</option>
+                                {availableCampuses.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-2 top-2 w-3.5 h-3.5 pointer-events-none"
+                                style={{ color: campusFilter !== 'mine' ? '#fff' : 'var(--text-muted)' }} />
+                        </div>
+
                         <div className="flex items-center gap-2 w-full md:w-auto">
                             <Filter className="w-4 h-4 hidden md:block" style={{ color: 'var(--text-muted)' }} />
                             <span className="text-sm font-medium hidden md:block" style={{ color: 'var(--text-secondary)' }}>Filters:</span>
