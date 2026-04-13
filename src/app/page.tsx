@@ -320,7 +320,7 @@ export default function Home() {
                                     {mode === 'sign-up' ? (
                                         <SignUp
                                             routing="hash"
-                                            forceRedirectUrl="/dashboard"
+                                            fallbackRedirectUrl="/dashboard"
                                             appearance={{
                                                 elements: {
                                                     rootBox: 'w-full mx-auto',
@@ -352,7 +352,7 @@ export default function Home() {
                                     ) : (
                                         <SignIn
                                             routing="hash"
-                                            forceRedirectUrl="/dashboard"
+                                            fallbackRedirectUrl="/dashboard"
                                             appearance={{
                                                 elements: {
                                                     rootBox: 'w-full mx-auto',
