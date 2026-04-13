@@ -23,13 +23,20 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const sort = SortSchema.parse(searchParams.get('sort') || 'new')
+    // campusFilter: 'mine' (default) | 'all' | specific campus string
+    const campusFilter = searchParams.get('campusFilter') || 'mine'
 
     const supabase = getSupabase()
 
     let query = supabase
         .from('posts')
         .select('*')
-        .eq('campus', user.campus)
+
+    if (campusFilter === 'mine' && user.campus) {
+        query = query.eq('campus', user.campus)
+    } else if (campusFilter !== 'all' && campusFilter !== 'mine') {
+        query = query.eq('campus', campusFilter)
+    }
 
     if (sort === 'new') {
         query = query.order('created_at', { ascending: false })

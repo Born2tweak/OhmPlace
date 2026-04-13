@@ -4,10 +4,11 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
 
 export const dynamic = 'force-dynamic'
-import { Plus, Flame, Clock, TrendingUp, Users, Loader2 } from 'lucide-react'
+import { Plus, Flame, Clock, TrendingUp, Users, GraduationCap, ChevronDown } from 'lucide-react'
 import PostCard from '@/components/community/PostCard'
 import CreatePostModal from '@/components/community/CreatePostModal'
 import PullToRefresh from '@/components/PullToRefresh'
+import { useCampus } from '@/components/CampusContext'
 
 interface Post {
     id: string
@@ -29,17 +30,27 @@ type SortOption = 'hot' | 'new' | 'best'
 
 export default function CommunityPage() {
     const { user } = useUser()
+    const campus = useCampus()
     const [posts, setPosts] = useState<Post[]>([])
     const [loading, setLoading] = useState(true)
     const [sort, setSort] = useState<SortOption>('hot')
     const [showCreateModal, setShowCreateModal] = useState(false)
+    const [campusFilter, setCampusFilter] = useState<string>('mine')
+    const [availableCampuses, setAvailableCampuses] = useState<string[]>([])
 
-    const campus = user?.primaryEmailAddress?.emailAddress?.split('@')[1] || ''
+    const emailDomain = user?.primaryEmailAddress?.emailAddress?.split('@')[1] || ''
+
+    useEffect(() => {
+        fetch('/api/community/campuses')
+            .then(r => r.ok ? r.json() : [])
+            .then((data: string[]) => setAvailableCampuses(data))
+            .catch(() => {})
+    }, [])
 
     const fetchPosts = useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetch(`/api/community/posts?sort=${sort}`)
+            const res = await fetch(`/api/community/posts?sort=${sort}&campusFilter=${encodeURIComponent(campusFilter)}`)
             if (res.ok) {
                 const data = await res.json()
                 setPosts(data)
@@ -47,7 +58,7 @@ export default function CommunityPage() {
         } finally {
             setLoading(false)
         }
-    }, [sort])
+    }, [sort, campusFilter])
 
     useEffect(() => {
         fetchPosts()
@@ -115,9 +126,15 @@ export default function CommunityPage() {
                             </div>
                             <div>
                                 <h1 className="text-lg sm:text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                                    {campus ? campus.split('.')[0].charAt(0).toUpperCase() + campus.split('.')[0].slice(1) : 'Campus'} Community
+                                    {campusFilter === 'mine' && campus
+                                        ? campus
+                                        : campusFilter === 'all'
+                                        ? 'All Schools'
+                                        : campusFilter} Community
                                 </h1>
-                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{campus}</p>
+                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                    {campusFilter === 'mine' ? emailDomain : campusFilter === 'all' ? 'Viewing all campuses' : campusFilter}
+                                </p>
                             </div>
                         </div>
                         <button
@@ -128,6 +145,43 @@ export default function CommunityPage() {
                             <Plus className="w-4 h-4" />
                             Create Post
                         </button>
+                    </div>
+
+                    {/* Campus filter */}
+                    <div className="flex flex-wrap items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                        {campus && (
+                            <button
+                                onClick={() => setCampusFilter('mine')}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+                                style={{
+                                    background: campusFilter === 'mine' ? 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))' : 'var(--bg-lighter)',
+                                    color: campusFilter === 'mine' ? '#fff' : 'var(--text-secondary)',
+                                    border: campusFilter === 'mine' ? 'none' : '1px solid var(--border-subtle)',
+                                }}
+                            >
+                                <GraduationCap className="w-3.5 h-3.5" />
+                                My School
+                            </button>
+                        )}
+                        <div className="relative">
+                            <select
+                                value={campusFilter === 'mine' ? '' : campusFilter}
+                                onChange={(e) => setCampusFilter(e.target.value || 'mine')}
+                                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 transition-colors cursor-pointer"
+                                style={{
+                                    background: campusFilter !== 'mine' ? 'linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))' : 'var(--bg-lighter)',
+                                    color: campusFilter !== 'mine' ? '#fff' : 'var(--text-secondary)',
+                                    border: campusFilter !== 'mine' ? 'none' : '1px solid var(--border-subtle)',
+                                }}
+                            >
+                                <option value="">All Schools</option>
+                                {availableCampuses.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-2 top-2 w-3.5 h-3.5 pointer-events-none"
+                                style={{ color: campusFilter !== 'mine' ? '#fff' : 'var(--text-muted)' }} />
+                        </div>
                     </div>
                 </div>
 
