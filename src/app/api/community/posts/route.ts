@@ -33,7 +33,13 @@ export async function GET(request: NextRequest) {
         .select('*')
 
     if (campusFilter === 'mine' && user.campus) {
-        query = query.eq('campus', user.campus)
+        // Match full name (new posts) OR legacy email domain (old posts)
+        const emailDomain = user.email.split('@')[1]
+        if (emailDomain && emailDomain !== user.campus) {
+            query = query.or(`campus.eq.${user.campus},campus.eq.${emailDomain}`)
+        } else {
+            query = query.eq('campus', user.campus)
+        }
     } else if (campusFilter !== 'all' && campusFilter !== 'mine') {
         query = query.eq('campus', campusFilter)
     }

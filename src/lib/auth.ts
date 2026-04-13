@@ -1,4 +1,5 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
+import { detectCampusFromEmail } from '@/lib/campus'
 
 export async function getAuthenticatedUser() {
     const { userId } = await auth()
@@ -10,7 +11,7 @@ export async function getAuthenticatedUser() {
     const email = user.primaryEmailAddress?.emailAddress
     if (!email) return null
 
-    const campus = email.split('@')[1] // e.g., "purdue.edu"
+    const campus = detectCampusFromEmail(email) ?? email.split('@')[1]
     const username = user.firstName
         ? `${user.firstName}${user.lastName ? ' ' + user.lastName.charAt(0) + '.' : ''}`
         : email.split('@')[0]
