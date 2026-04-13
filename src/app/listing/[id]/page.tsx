@@ -1,20 +1,15 @@
-import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import PublicListingClient from './PublicListingClient'
+import { getSupabase } from '@/lib/supabase/server'
 
 interface Props {
     params: Promise<{ id: string }>
 }
 
-const supabasePublic = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params
-    const { data } = await supabasePublic
+    const { data } = await getSupabase()
         .from('listings')
         .select('title, description, price, listing_images(image_url)')
         .eq('id', id)
@@ -46,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PublicListingPage({ params }: Props) {
     const { id } = await params
 
-    const { data: listing } = await supabasePublic
+    const { data: listing } = await getSupabase()
         .from('listings')
         .select('*, listing_images(*)')
         .eq('id', id)
