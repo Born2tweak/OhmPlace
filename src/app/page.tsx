@@ -1,8 +1,8 @@
 'use client'
 
 import { useUser, useClerk, SignIn, SignUp } from '@clerk/nextjs'
-import { useState, useEffect } from 'react'
-import { Sun, Moon } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Sun, Moon, ShoppingBag, MessageCircle, GraduationCap, Shield, Zap, Users, ArrowRight, Star } from 'lucide-react'
 import { useTheme } from '@/components/ThemeProvider'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -10,9 +10,11 @@ import Link from 'next/link'
 export default function Home() {
     const { user, isLoaded, isSignedIn } = useUser()
     const { signOut } = useClerk()
-    const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
+    const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-up')
     const { theme, setTheme } = useTheme()
     const router = useRouter()
+    const authRef = useRef<HTMLDivElement>(null)
+
     const email = user?.primaryEmailAddress?.emailAddress
     const eduError = Boolean(isSignedIn && email && !/@.+\.edu$/i.test(email))
 
@@ -22,22 +24,21 @@ export default function Home() {
         }
     }, [eduError, email, isSignedIn, router])
 
-    const getCampus = (email: string | undefined): string => {
-        if (!email) return ''
-        const match = email.match(/@(.+\.edu)$/i)
-        return match ? match[1].replace('.edu', '').toUpperCase() : ''
+    const scrollToAuth = (m: 'sign-in' | 'sign-up' = 'sign-up') => {
+        setMode(m)
+        authRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-light-blue)' }}>
             {/* Nav */}
             <nav className="backdrop-blur-md sticky top-0 z-50"
-                style={{ borderBottom: '1px solid var(--border-subtle)', background: theme === 'dark' ? 'rgba(30, 42, 58, 0.7)' : 'rgba(255, 255, 255, 0.7)' }}>
+                style={{ borderBottom: '1px solid var(--border-subtle)', background: theme === 'dark' ? 'rgba(30, 42, 58, 0.85)' : 'rgba(255, 255, 255, 0.85)' }}>
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
-                                style={{ background: `linear-gradient(135deg, var(--brand-primary), var(--brand-accent))` }}>
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+                                style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}>
                                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
@@ -45,69 +46,247 @@ export default function Home() {
                             <span className="font-bold text-xl" style={{ color: 'var(--text-primary)' }}>OhmPlace</span>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             <button
                                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                                 className="p-2 rounded-lg transition-colors hover:opacity-80"
                                 style={{ color: 'var(--text-secondary)' }}
                                 aria-label="Toggle theme"
                             >
-                                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                             </button>
-
-                            {isLoaded && isSignedIn && (
-                                <>
-                                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full"
-                                        style={{ background: 'color-mix(in srgb, var(--brand-primary) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--brand-primary) 30%, transparent)' }}>
-                                        <span className="w-2 h-2 rounded-full" style={{ background: 'var(--brand-primary)' }}></span>
-                                        <span className="text-sm font-medium" style={{ color: 'var(--brand-accent)' }}>{getCampus(user?.primaryEmailAddress?.emailAddress)}</span>
-                                    </div>
-                                    <button onClick={() => signOut()} className="text-sm font-medium transition-colors" style={{ color: 'var(--text-secondary)' }}>
-                                        Sign Out
-                                    </button>
-                                </>
-                            )}
+                            <button
+                                onClick={() => scrollToAuth('sign-in')}
+                                className="text-sm font-medium transition-colors hover:opacity-80"
+                                style={{ color: 'var(--text-secondary)' }}
+                            >
+                                Sign In
+                            </button>
+                            <button
+                                onClick={() => scrollToAuth('sign-up')}
+                                className="btn-primary text-sm px-4 py-2 rounded-lg"
+                            >
+                                Get Started
+                            </button>
                         </div>
                     </div>
                 </div>
             </nav>
 
-            {/* Hero */}
             <main>
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
-                    <div className="grid lg:grid-cols-2 gap-12 items-center">
-                        {/* Left */}
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6 shadow-sm"
-                                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', color: 'var(--brand-accent)' }}>
-                                <span className="text-lg">🎓</span>
-                                For Students, By Students
+                {/* Hero */}
+                <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-8 shadow-sm"
+                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', color: 'var(--brand-accent)' }}>
+                        <span>🎓</span> .edu verified — students only
+                    </div>
+
+                    <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.05]"
+                        style={{ color: 'var(--text-primary)' }}>
+                        Buy & sell on
+                        <span className="block gradient-text">your campus</span>
+                    </h1>
+
+                    <p className="text-xl max-w-2xl mx-auto mb-10 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                        OhmPlace is the marketplace built exclusively for college students.
+                        No strangers, no shipping — just students on your campus.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+                        <button
+                            onClick={() => scrollToAuth('sign-up')}
+                            className="btn-primary inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl text-base font-semibold"
+                        >
+                            Start selling for free <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => scrollToAuth('sign-in')}
+                            className="btn-secondary inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl text-base font-semibold"
+                        >
+                            Already have an account
+                        </button>
+                    </div>
+
+                    {/* Trust badges */}
+                    <div className="flex flex-wrap justify-center gap-3">
+                        {[
+                            { icon: '✓', text: '.edu Verified Only' },
+                            { icon: '✓', text: 'Zero Listing Fees' },
+                            { icon: '✓', text: 'Local Pickup' },
+                            { icon: '✓', text: 'Campus Community' },
+                        ].map(({ icon, text }) => (
+                            <div key={text} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm shadow-sm"
+                                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                                <span style={{ color: 'var(--brand-primary)' }}>{icon}</span>
+                                <span style={{ color: 'var(--text-secondary)' }}>{text}</span>
                             </div>
+                        ))}
+                    </div>
+                </section>
 
-                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight"
-                                style={{ color: 'var(--text-primary)' }}>
-                                Your Campus
-                                <span className="block gradient-text">Marketplace</span>
-                            </h1>
+                {/* Features */}
+                <section className="py-20" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 className="text-3xl font-bold text-center mb-4" style={{ color: 'var(--text-primary)' }}>
+                            Everything you need, nothing you don&apos;t
+                        </h2>
+                        <p className="text-center mb-14 max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                            Built for the way students actually buy and sell.
+                        </p>
 
-                            <p className="text-lg mb-8 max-w-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                Buy, sell, and trade with students on your campus.
-                                Skip the shipping—meet up and exchange today.
-                            </p>
-
-                            <div className="flex flex-wrap gap-3 mb-8">
-                                {['✓ .edu Verified', '✓ Local Pickup', '✓ No Fees'].map((text) => (
-                                    <div key={text} className="flex items-center gap-2 px-4 py-2 rounded-full shadow-sm"
-                                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-                                        <span style={{ color: 'var(--brand-primary)' }}>{text.split(' ')[0]}</span>
-                                        <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{text.split(' ').slice(1).join(' ')}</span>
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {[
+                                {
+                                    icon: <Shield className="w-6 h-6" />,
+                                    title: '.edu Verified',
+                                    desc: 'Every user is verified with a university email. No randoms, no scammers — only fellow students.',
+                                },
+                                {
+                                    icon: <GraduationCap className="w-6 h-6" />,
+                                    title: 'Campus-Scoped Feed',
+                                    desc: 'See listings from your school by default. Browse other campuses whenever you want.',
+                                },
+                                {
+                                    icon: <MessageCircle className="w-6 h-6" />,
+                                    title: 'Built-in Messaging',
+                                    desc: 'DM sellers directly in-app. No need to swap numbers with strangers.',
+                                },
+                                {
+                                    icon: <ShoppingBag className="w-6 h-6" />,
+                                    title: 'Zero Fees',
+                                    desc: 'List anything for free. We don\'t take a cut. You keep every dollar.',
+                                },
+                                {
+                                    icon: <Users className="w-6 h-6" />,
+                                    title: 'Campus Community',
+                                    desc: 'Post in the community feed — ask questions, share events, find study groups.',
+                                },
+                                {
+                                    icon: <Zap className="w-6 h-6" />,
+                                    title: 'List in Seconds',
+                                    desc: 'Add photos, set a price, and go live. The whole process takes under a minute.',
+                                },
+                            ].map((f) => (
+                                <div key={f.title} className="card p-6 rounded-2xl transition-all hover:scale-[1.02]">
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                                        style={{ background: 'color-mix(in srgb, var(--brand-primary) 12%, transparent)', color: 'var(--brand-primary)' }}>
+                                        {f.icon}
                                     </div>
-                                ))}
-                            </div>
+                                    <h3 className="font-semibold text-lg mb-2" style={{ color: 'var(--text-primary)' }}>{f.title}</h3>
+                                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{f.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* What you can sell */}
+                <section className="py-20">
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                        <h2 className="text-3xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                            What are students selling?
+                        </h2>
+                        <p className="mb-12 max-w-lg mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                            Anything a student would want to buy or offload.
+                        </p>
+
+                        <div className="flex flex-wrap justify-center gap-3 mb-12">
+                            {[
+                                '📚 Textbooks', '💻 Laptops', '🛋️ Furniture', '👟 Clothes & Shoes',
+                                '🎮 Gaming Gear', '🚲 Bikes', '🍳 Kitchen Stuff', '📱 Electronics',
+                                '🎒 Backpacks', '🏋️ Gym Equipment', '🖨️ Printers', '🎵 Instruments',
+                            ].map((item) => (
+                                <div key={item} className="px-4 py-2 rounded-full text-sm font-medium"
+                                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                    {item}
+                                </div>
+                            ))}
                         </div>
 
-                        {/* Right: Auth */}
-                        <div className="card p-8" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                        <button
+                            onClick={() => scrollToAuth('sign-up')}
+                            className="btn-primary inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-base font-semibold"
+                        >
+                            List your first item free <ArrowRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </section>
+
+                {/* How it works */}
+                <section className="py-20" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 className="text-3xl font-bold text-center mb-4" style={{ color: 'var(--text-primary)' }}>
+                            Up and running in 60 seconds
+                        </h2>
+                        <p className="text-center mb-14 max-w-lg mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                            No app download. Just sign up with your .edu and go.
+                        </p>
+
+                        <div className="grid md:grid-cols-3 gap-8 relative">
+                            {[
+                                { step: '01', icon: '🎓', title: 'Sign up with .edu', desc: 'Create your account using your university email. Takes 30 seconds.' },
+                                { step: '02', icon: '📸', title: 'Snap & list', desc: 'Add photos, write a description, set your price. Your listing goes live immediately.' },
+                                { step: '03', icon: '🤝', title: 'Meet on campus', desc: 'Buyers message you in-app. Arrange a meetup anywhere on campus — done.' },
+                            ].map((s, i) => (
+                                <div key={s.step} className="text-center relative">
+                                    {i < 2 && (
+                                        <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px"
+                                            style={{ background: 'linear-gradient(to right, var(--brand-primary), transparent)', opacity: 0.3 }} />
+                                    )}
+                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl relative z-10"
+                                        style={{ background: 'color-mix(in srgb, var(--brand-primary) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--brand-primary) 20%, transparent)' }}>
+                                        {s.icon}
+                                    </div>
+                                    <div className="text-xs font-bold mb-2 tracking-widest uppercase" style={{ color: 'var(--brand-primary)' }}>{s.step}</div>
+                                    <h3 className="font-semibold text-lg mb-2" style={{ color: 'var(--text-primary)' }}>{s.title}</h3>
+                                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{s.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Testimonial / social proof */}
+                <section className="py-20">
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 className="text-3xl font-bold text-center mb-14" style={{ color: 'var(--text-primary)' }}>
+                            Students love it
+                        </h2>
+                        <div className="grid md:grid-cols-3 gap-6">
+                            {[
+                                { quote: "Sold my old textbooks in like 2 hours. Way easier than Facebook Marketplace.", name: "CS Junior, Purdue", stars: 5 },
+                                { quote: "Finally a place where I know I'm only dealing with people from my school. Feels way safer.", name: "Freshman, Indiana University", stars: 5 },
+                                { quote: "Got a barely used mini fridge for $30. The campus filter is clutch.", name: "Sophomore, Purdue", stars: 5 },
+                            ].map((t) => (
+                                <div key={t.name} className="card p-6 rounded-2xl">
+                                    <div className="flex gap-1 mb-4">
+                                        {Array.from({ length: t.stars }).map((_, i) => (
+                                            <Star key={i} className="w-4 h-4 fill-current" style={{ color: '#f59e0b' }} />
+                                        ))}
+                                    </div>
+                                    <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--text-secondary)' }}>
+                                        &ldquo;{t.quote}&rdquo;
+                                    </p>
+                                    <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{t.name}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Auth section */}
+                <section ref={authRef} className="py-20" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-subtle)' }}>
+                    <div className="max-w-md mx-auto px-4">
+                        <div className="text-center mb-8">
+                            <h2 className="text-3xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+                                {mode === 'sign-up' ? 'Join OhmPlace' : 'Welcome back'}
+                            </h2>
+                            <p style={{ color: 'var(--text-secondary)' }}>
+                                {mode === 'sign-up' ? 'Sign up with your .edu email — it\'s free.' : 'Sign in to your account.'}
+                            </p>
+                        </div>
+
+                        <div className="card p-8 rounded-2xl">
                             {!isLoaded ? (
                                 <div className="flex items-center justify-center py-12">
                                     <svg className="animate-spin h-8 w-8" style={{ color: 'var(--brand-primary)' }} fill="none" viewBox="0 0 24 24">
@@ -133,91 +312,78 @@ export default function Home() {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                         </svg>
-                                        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                            Taking you to your dashboard...
-                                        </p>
+                                        <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Taking you to your dashboard...</p>
                                     </div>
                                 )
                             ) : (
                                 <div className="w-full">
-                                    <div className="text-center mb-6">
-                                        <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-                                            {mode === 'sign-up' ? 'Create Account' : 'Get Started'}
-                                        </h2>
-                                        <p style={{ color: 'var(--text-secondary)' }}>
-                                            {mode === 'sign-up' ? 'Join with your university email' : 'Sign in with your university email'}
-                                        </p>
-                                    </div>
-                                    <div className="w-full flex justify-center">
-                                        <div className="w-full">
-                                            {mode === 'sign-up' ? (
-                                                <SignUp
-                                                    routing="hash"
-                                                    forceRedirectUrl="/dashboard"
-                                                    appearance={{
-                                                        elements: {
-                                                            rootBox: 'w-full mx-auto',
-                                                            card: 'bg-transparent shadow-none p-0 w-full',
-                                                            headerTitle: 'hidden',
-                                                            headerSubtitle: 'hidden',
-                                                            socialButtonsBlockButton: 'hidden',
-                                                            socialButtonsBlockButtonText: 'hidden',
-                                                            socialButtonsProviderIcon: 'hidden',
-                                                            dividerRow: 'hidden',
-                                                            alternativeMethodsBlockButton: 'hidden',
-                                                            identityPreview: 'hidden',
-                                                            identityPreviewText: 'hidden',
-                                                            identityPreviewEditButton: 'hidden',
-                                                            formFieldLabel__identifier: 'hidden',
-                                                            formFieldInputShowPasswordButton: 'hidden',
-                                                            badge: 'hidden',
-                                                            formFieldHintText: 'hidden',
-                                                            formFieldInput: 'bg-[#f4fafb] border border-[#d4e8ea] text-[#2c3e50] focus:border-[#22c1c3] rounded-lg w-full',
-                                                            formButtonPrimary: 'bg-[#22c1c3] hover:bg-[#1a9a9b] shadow-md rounded-lg w-full',
-                                                            formFieldAction: 'hidden',
-                                                            footer: 'hidden',
-                                                            footerAction: 'hidden',
-                                                            footerActionLink: 'hidden',
-                                                            footerActionText: 'hidden',
-                                                        }
-                                                    }}
-                                                />
-                                            ) : (
-                                                <SignIn
-                                                    routing="hash"
-                                                    forceRedirectUrl="/dashboard"
-                                                    appearance={{
-                                                        elements: {
-                                                            rootBox: 'w-full mx-auto',
-                                                            card: 'bg-transparent shadow-none p-0 w-full',
-                                                            headerTitle: 'hidden',
-                                                            headerSubtitle: 'hidden',
-                                                            socialButtonsBlockButton: 'hidden',
-                                                            socialButtonsBlockButtonText: 'hidden',
-                                                            socialButtonsProviderIcon: 'hidden',
-                                                            dividerRow: 'hidden',
-                                                            alternativeMethodsBlockButton: 'hidden',
-                                                            identityPreview: 'hidden',
-                                                            identityPreviewText: 'hidden',
-                                                            identityPreviewEditButton: 'hidden',
-                                                            formFieldLabel__identifier: 'hidden',
-                                                            formFieldInputShowPasswordButton: 'hidden',
-                                                            badge: 'hidden',
-                                                            formFieldHintText: 'hidden',
-                                                            formFieldInput: 'bg-[#f4fafb] border border-[#d4e8ea] text-[#2c3e50] focus:border-[#22c1c3] rounded-lg w-full',
-                                                            formButtonPrimary: 'bg-[#22c1c3] hover:bg-[#1a9a9b] shadow-md rounded-lg w-full',
-                                                            formFieldAction: 'hidden',
-                                                            footer: 'hidden',
-                                                            footerAction: 'hidden',
-                                                            footerActionLink: 'hidden',
-                                                            footerActionText: 'hidden',
-                                                        }
-                                                    }}
-                                                />
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="mt-6 text-center w-full">
+                                    {mode === 'sign-up' ? (
+                                        <SignUp
+                                            routing="hash"
+                                            forceRedirectUrl="/dashboard"
+                                            appearance={{
+                                                elements: {
+                                                    rootBox: 'w-full mx-auto',
+                                                    card: 'bg-transparent shadow-none p-0 w-full',
+                                                    headerTitle: 'hidden',
+                                                    headerSubtitle: 'hidden',
+                                                    socialButtonsBlockButton: 'hidden',
+                                                    socialButtonsBlockButtonText: 'hidden',
+                                                    socialButtonsProviderIcon: 'hidden',
+                                                    dividerRow: 'hidden',
+                                                    alternativeMethodsBlockButton: 'hidden',
+                                                    identityPreview: 'hidden',
+                                                    identityPreviewText: 'hidden',
+                                                    identityPreviewEditButton: 'hidden',
+                                                    formFieldLabel__identifier: 'hidden',
+                                                    formFieldInputShowPasswordButton: 'hidden',
+                                                    badge: 'hidden',
+                                                    formFieldHintText: 'hidden',
+                                                    formFieldInput: 'bg-[#f4fafb] border border-[#d4e8ea] text-[#2c3e50] focus:border-[#22c1c3] rounded-lg w-full',
+                                                    formButtonPrimary: 'bg-[#22c1c3] hover:bg-[#1a9a9b] shadow-md rounded-lg w-full',
+                                                    formFieldAction: 'hidden',
+                                                    footer: 'hidden',
+                                                    footerAction: 'hidden',
+                                                    footerActionLink: 'hidden',
+                                                    footerActionText: 'hidden',
+                                                }
+                                            }}
+                                        />
+                                    ) : (
+                                        <SignIn
+                                            routing="hash"
+                                            forceRedirectUrl="/dashboard"
+                                            appearance={{
+                                                elements: {
+                                                    rootBox: 'w-full mx-auto',
+                                                    card: 'bg-transparent shadow-none p-0 w-full',
+                                                    headerTitle: 'hidden',
+                                                    headerSubtitle: 'hidden',
+                                                    socialButtonsBlockButton: 'hidden',
+                                                    socialButtonsBlockButtonText: 'hidden',
+                                                    socialButtonsProviderIcon: 'hidden',
+                                                    dividerRow: 'hidden',
+                                                    alternativeMethodsBlockButton: 'hidden',
+                                                    identityPreview: 'hidden',
+                                                    identityPreviewText: 'hidden',
+                                                    identityPreviewEditButton: 'hidden',
+                                                    formFieldLabel__identifier: 'hidden',
+                                                    formFieldInputShowPasswordButton: 'hidden',
+                                                    badge: 'hidden',
+                                                    formFieldHintText: 'hidden',
+                                                    formFieldInput: 'bg-[#f4fafb] border border-[#d4e8ea] text-[#2c3e50] focus:border-[#22c1c3] rounded-lg w-full',
+                                                    formButtonPrimary: 'bg-[#22c1c3] hover:bg-[#1a9a9b] shadow-md rounded-lg w-full',
+                                                    formFieldAction: 'hidden',
+                                                    footer: 'hidden',
+                                                    footerAction: 'hidden',
+                                                    footerActionLink: 'hidden',
+                                                    footerActionText: 'hidden',
+                                                }
+                                            }}
+                                        />
+                                    )}
+
+                                    <div className="mt-6 text-center">
                                         <button
                                             onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}
                                             className="text-sm transition-colors"
@@ -226,16 +392,12 @@ export default function Home() {
                                             {mode === 'sign-up' ? (
                                                 <>Already have an account? <span className="font-medium hover:underline" style={{ color: 'var(--brand-primary)' }}>Sign in</span></>
                                             ) : (
-                                                <>Don&apos;t have an account? <span className="font-medium hover:underline" style={{ color: 'var(--brand-primary)' }}>Sign up</span></>
+                                                <>Don&apos;t have an account? <span className="font-medium hover:underline" style={{ color: 'var(--brand-primary)' }}>Sign up free</span></>
                                             )}
                                         </button>
                                         {mode === 'sign-in' && (
                                             <div className="mt-3">
-                                                <Link
-                                                    href="/forgot-password"
-                                                    className="text-sm transition-colors hover:underline"
-                                                    style={{ color: 'var(--text-muted)' }}
-                                                >
+                                                <Link href="/forgot-password" className="text-sm transition-colors hover:underline" style={{ color: 'var(--text-muted)' }}>
                                                     Forgot your password?
                                                 </Link>
                                             </div>
@@ -248,36 +410,27 @@ export default function Home() {
                             )}
                         </div>
                     </div>
-                </div>
-
-                {/* How it works */}
-                <div className="py-16" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-subtle)' }}>
-                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <h2 className="text-2xl font-bold text-center mb-12" style={{ color: 'var(--text-primary)' }}>How it works</h2>
-                        <div className="grid md:grid-cols-3 gap-8">
-                            {[
-                                { icon: '📝', title: 'List your item', desc: "Post what you're selling in seconds" },
-                                { icon: '🤝', title: 'Connect locally', desc: 'Find buyers/sellers on your campus' },
-                                { icon: '✨', title: 'Meet & exchange', desc: 'No shipping, no waiting' },
-                            ].map((step) => (
-                                <div key={step.title} className="text-center">
-                                    <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl"
-                                        style={{ background: 'color-mix(in srgb, var(--brand-primary) 10%, transparent)' }}>
-                                        {step.icon}
-                                    </div>
-                                    <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>{step.title}</h3>
-                                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{step.desc}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                </section>
             </main>
 
             {/* Footer */}
-            <footer className="py-6" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-                <div className="max-w-6xl mx-auto px-4 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-                    © 2026 OhmPlace
+            <footer className="py-8" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
+                <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                            style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}>
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>OhmPlace</span>
+                    </div>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>© 2026 OhmPlace · Built for students</p>
+                    <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        <button onClick={() => scrollToAuth('sign-up')} className="hover:underline" style={{ color: 'var(--brand-primary)' }}>
+                            Get Started
+                        </button>
+                    </div>
                 </div>
             </footer>
         </div>
