@@ -18,7 +18,10 @@ export const metadata: Metadata = {
     title: "OhmPlace | Campus Marketplace",
     description: "Buy, sell, and trade with students on your campus.",
     icons: {
-        icon: '/favicon.ico',
+        icon: [
+            { url: '/logo.png', type: 'image/png' },
+            { url: '/favicon.ico' },
+        ],
         apple: '/apple-touch-icon.png',
     },
 }
