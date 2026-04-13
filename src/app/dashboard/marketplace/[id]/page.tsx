@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Loader2, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Share2, MapPin, Tag, Clock, ShieldCheck, Loader2, ChevronLeft, ChevronRight, Trash2, CheckCircle } from 'lucide-react'
 import type { Listing, ListingImage } from '@/types/database'
 import { useToast } from '@/components/Toast'
 
@@ -33,6 +33,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
     const [selectedImageIndex, setSelectedImageIndex] = useState(0)
     const [messaging, setMessaging] = useState(false)
     const [deleting, setDeleting] = useState(false)
+    const [markingSold, setMarkingSold] = useState(false)
     const { toast } = useToast()
     const carouselTouchRef = useRef<CarouselTouchState>({ startX: null, startY: null })
 
@@ -101,6 +102,23 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
             toast(message, 'error')
             setMessaging(false)
         }
+    }
+
+    const handleMarkAsSold = async () => {
+        if (!listing) return
+        setMarkingSold(true)
+        const supabase = createClient()
+        const { error } = await supabase
+            .from('listings')
+            .update({ status: 'sold' })
+            .eq('id', listing.id)
+        if (error) {
+            toast('Failed to mark as sold', 'error')
+        } else {
+            setListing({ ...listing, status: 'sold' })
+            toast('Listing marked as sold!', 'success')
+        }
+        setMarkingSold(false)
     }
 
     const formatPrice = (cents: number) => {
@@ -326,35 +344,40 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                                 Share Listing
                             </button>
                             {user?.id === listing.user_id && (
-                                <button
-                                    onClick={async () => {
-                                        if (!confirm('Are you sure you want to delete this listing? This cannot be undone.')) return
-                                        setDeleting(true)
-                                        const supabase = createClient()
-                                        try {
-                                            await supabase.from('listing_images').delete().eq('listing_id', listing.id)
-                                            await supabase.from('listings').delete().eq('id', listing.id)
-                                            toast('Listing deleted', 'success')
-                                            router.push('/dashboard/my-listings')
-                                        } catch (err) {
-                                            console.error('Error deleting listing:', err)
-                                            toast('Failed to delete listing', 'error')
-                                            setDeleting(false)
-                                        }
-                                    }}
-                                    disabled={deleting}
-                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)' }}
-                                >
-                                    {deleting ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                    ) : (
-                                        <>
-                                            <Trash2 className="w-5 h-5" />
-                                            Delete Listing
-                                        </>
+                                <>
+                                    {listing.status === 'available' && (
+                                        <button
+                                            onClick={handleMarkAsSold}
+                                            disabled={markingSold}
+                                            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.3)' }}
+                                        >
+                                            {markingSold ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle className="w-5 h-5" />Mark as Sold</>}
+                                        </button>
                                     )}
-                                </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (!confirm('Are you sure you want to delete this listing? This cannot be undone.')) return
+                                            setDeleting(true)
+                                            const supabase = createClient()
+                                            try {
+                                                await supabase.from('listing_images').delete().eq('listing_id', listing.id)
+                                                await supabase.from('listings').delete().eq('id', listing.id)
+                                                toast('Listing deleted', 'success')
+                                                router.push('/dashboard/my-listings')
+                                            } catch (err) {
+                                                console.error('Error deleting listing:', err)
+                                                toast('Failed to delete listing', 'error')
+                                                setDeleting(false)
+                                            }
+                                        }}
+                                        disabled={deleting}
+                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)' }}
+                                    >
+                                        {deleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Trash2 className="w-5 h-5" />Delete Listing</>}
+                                    </button>
+                                </>
                             )}
                         </div>
 

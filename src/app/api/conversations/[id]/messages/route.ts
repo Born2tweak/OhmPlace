@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { clerkClient } from '@clerk/nextjs/server'
 import { getAuthenticatedUser } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase/server'
+import { sendNewMessageEmail } from '@/lib/email'
 import type { Conversation } from '@/types/database'
 
 type ConversationLookup = Pick<Conversation, 'id' | 'participant_1' | 'participant_2'>
@@ -125,6 +127,31 @@ export async function POST(
                 last_message_at: new Date().toISOString(),
             })
             .eq('id', conversationId)
+
+        // Send email notification to recipient (fire-and-forget)
+        const recipientId = convo.participant_1 === authUser.userId
+            ? convo.participant_2
+            : convo.participant_1
+
+        void (async () => {
+            try {
+                const clerk = await clerkClient()
+                const recipient = await clerk.users.getUser(recipientId)
+                const recipientEmail = recipient.primaryEmailAddress?.emailAddress
+                if (recipientEmail) {
+                    const recipientName = recipient.firstName || recipientEmail.split('@')[0]
+                    await sendNewMessageEmail({
+                        toEmail: recipientEmail,
+                        toName: recipientName,
+                        fromName: authUser.username || authUser.email.split('@')[0],
+                        messagePreview: lastMessageText.slice(0, 120),
+                        conversationId,
+                    })
+                }
+            } catch {
+                // Non-critical — don't fail the request if email errors
+            }
+        })()
 
         return NextResponse.json(message)
     } catch (error) {
